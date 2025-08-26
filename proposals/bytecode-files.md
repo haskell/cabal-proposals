@@ -18,6 +18,7 @@ bytecode artifacts, which will:
 - Reduce compilation time for development workflows
 - Provide better integration between Cabal and GHC's bytecode capabilities
 - Support the new `-fwrite-bytecode` flag in GHC for persistent bytecode generation
+- Allow the debugger to step-through library dependencies code
 
 This is not intended to replace native code for production executables, but
 rather to extend Cabal's capabilities where fast build times, portability, and
