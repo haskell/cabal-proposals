@@ -1,29 +1,27 @@
-# Timeline and plan for removing v1- legacy commands
+# Timeline and plan for removing `v1-` legacy commands
 
 ## Summary
 
-The `v2-*` project based commands were introduced alongside the legacy interface in
+The `v2-` project based commands were introduced alongside the legacy interface in
 2016. This family of commands introduced support for multi-package based workflows
 and installation of packages into a global store.
 
-The primary way which people use cabal today is via the "v2-\*" interface. Writing
+The primary way which people use cabal today is via the `v2-` interface. Writing
 a command without a prefix defaults to using the `v2` command.
 
 This document starts from the premise that
 
-> We want to remove the `v1-*` family of commands, therefore we need a plan to achieve that.
+> We want to remove the `v1-` family of commands, therefore we need a plan to achieve that.
 
 ## Motivation
 
-* There is much legacy code which has to be maintained and updated when modifying other
-  parts of cabal. This code is not well-tested nor understood anymore.
-* It is confusing to user's having two families of command exist for nearly 10 years.
-* We talk about performing this task a lot, which is halting progressing cabal on
-  other fronts. For example, I am spending my time writing this document.
+* There is much legacy code which has to be maintained and updated when modifying other parts of cabal. This code is not well-tested nor understood anymore. In legacy codebases like cabal, you quite often might modify a commonly used function and be forced to consider how to adapt all the codepaths which use it. It is hard to modify legacy paths which aren't understood and little used to know what the right thing to do is.
+* It is confusing to users having two families of command exist for nearly 10 years. Users can follow old tutorials which suggest using v1- commands for certain tasks, they can raise bug reports about `v1-` features, when their use-case may be better served by a `v2-` command.
+* We talk about performing this task a lot, which is halting progressing cabal on other fronts. For example, I am spending my time writing this document.
 
 ## Proposed Change
 
-I propose to build consensus in the community around removing v1- commands.
+I propose to build consensus in the community around removing `v1-` commands.
 
 1. Internal Phase: Produce a document for cabal developers to agree on a direction of travel which we can work together on. <--- We are here
 2. Community Phase: Solicit feedback from the community about which `v1-` features are still used, and why.
@@ -39,7 +37,7 @@ I propose to build consensus in the community around removing v1- commands.
 ### Timeline
 
 I propose that we will complete "Internal/Community and Planning" phases during
-this release cycle. The deprecation phase will take place in the susuquent release cycle and
+this release cycle. The deprecation phase will take place in the subsequent release cycle and
 finally removal in the release cycle after that.
 
 * 3.16-3.18 (Internal/Community/Planning)
@@ -62,20 +60,20 @@ I can see three main avenues to solicit feedback from users.
 
 * Reading existing tickets about `v1-` commands, and verifying that the requirement still exists.
 * Posting about this proposal on official spaces such as Discourse.
-* Directly contacting "known users" of `v1-*` commands.
+* Directly contacting "known users" of `v1-` commands.
 
 The purpose of the consultation process is to identify users and workflows that
-still actively depend on `v1-\*` commands, and to understand why they do so.
+still actively depend on `v1-` commands, and to understand why they do so.
 
-Feedback about general improvements to `v2-\*` workflows is welcome, but the focus
-of this phase is to locate active dependencies. Those are the cases where removing `v1-\*`
+Feedback about general improvements to `v2-` workflows is welcome, but the focus
+of this phase is to locate active dependencies. Those are the cases where removing `v1-`
 commands would break an existing workflow.
 
-Suggestions about how `v2-\*` could be improved are valuable for the long-term
-evolution of Cabal, but they are not direct blockers for deprecating `v1-\*`
-unless they correspond to a current `v1-*` use case.
+Suggestions about how `v2-` could be improved are valuable for the long-term
+evolution of Cabal, but they are not direct blockers for deprecating `v1-`
+unless they correspond to a current `v1-` use case.
 
-If a user no longer relies on `v1-*`, removal of those commands should not
+If a user no longer relies on `v1-`, removal of those commands should not
 materially affect their experience.
 
 
@@ -116,12 +114,12 @@ My main motivation is to allow people to move on from the `v1-`, `v2-` split.
 
 ## Backwards Compatibility / Migration
 
-This whole document is about backwards compatibility and migration!
+The document describes a concrete plan for removal of `v1-` commands in a way which users can migrate to the `v2-` commands.
 
 ## Interested parties
 
 This change has the potential to affect any user of cabal. During the relevant
-phases the documenant and plan will be communicated widely on platforms such as discourse.
+phases the documenant and plan will be communicated widely on platforms such as Discourse.
 
 ## Implementation Notes
 
@@ -136,3 +134,4 @@ other core contributors.
 * [Establish a plan for removing v1- commands](https://github.com/haskell/cabal/issues/11249)
 * [v1-vs-v2 label](https://github.com/haskell/cabal/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22re%3A%20v1-vs-v2%22)
 * [Deprecate new- prefix](https://github.com/haskell/cabal/issues/9109)
+
