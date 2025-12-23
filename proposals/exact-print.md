@@ -1,5 +1,9 @@
 # Community Project Cabal Exact Printer
 
+Note that this is a copy of the TWG
+proposal: https://github.com/haskellfoundation/tech-proposals/pull/65
+requested by Matthew: https://github.com/haskell/cabal/issues/11227#issuecomment-3590108400
+
 ## Summary
 
 The Exact Printer project aims to develop a precise parsing and printing tool for .cabal files in the cabal library.
