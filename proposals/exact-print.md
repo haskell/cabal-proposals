@@ -338,7 +338,13 @@ Timeline should be around 4 months.
 
 Since common stanza's have been solved.
 
-Currently we're struggling with how to retrieve the 
+Currently we're struggling with how to retrieve the "trivia" fields
+from build depends, 
+Leana is going to make a prototype to investigate that.
+cf: https://github.com/haskell/cabal/issues/11227#issuecomment-3678820700
+We want to know if we get it out of fieldgrammar and store it
+in a structured way.
+
 
 ## References
 
