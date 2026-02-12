@@ -306,12 +306,40 @@ describes can also be used in the related `GenericPackageDescription` to `Field`
 
 ## Backwards Compatibility / Migration
 
-We mostly want to prevent breaking changes.
-I'm leaning towards breaking some fields
-in GenericPackageDescription to indicate weather the common stanza's have
-been merged or not.
+These fields in GenericPackageDescription 
+will cause compile errors because they will now
+indicate they're not merged with the common stanzas:
 
-For now that's the only issue.
+```
+packageDescription
+, gpdScannedVersion
+, genPackageFlags
+, condLibrary
+, condSubLibraries
+, condForeignLibs
+, condExecutables
+, condTestSuites
+, condBenchmarks
+```
+
+We've to postpone merging of these fields to allow
+us to re-create the common stanza's upon exact printing.
+Compile errors can be solved by merging the common stanzas in to get the original type: `mergeCondLibrary`,
+or say there are no imports upon setting: `noImports`.
+
+Because we make the common stanza imports explicit like this the user
+will gain the capability to write common stanza's programatically,
+which they currently cannot do via `GenericPackageDescription`.
+
+The discussion can be seen [here](https://github.com/haskell/cabal/pull/11277#issuecomment-3679092808).
+In practice pattern synonyms isn't quite powerfull enough for full backwards compatibility on record updates.
+
+There is a lot of breakage in the Pretty modules.
+We don't expect this to be a major problem however for most cabal client
+libraries because the Pretty printer was mostly broken before our changes.
+
+TODO: go over rest of the PR
+
 
 ## Interested parties
 
@@ -328,11 +356,33 @@ we can:
 Furthermore I've heard that the HLS project will benefit this effort,
 it could add a dependencies plugin for example: https://github.com/haskell/haskell-language-server/issues/155
 
+TODO: List out major users of cabal (the library). get their feedback.
+
+Okay, now how to contact all these?
+-> probably I'll just use the hackage api to extract all email addresses from the cabal files.
+-> I'll ask hecate too
+
 ## Implementation Notes
 
 Yes me and Leana.
 Timeline should be around 4 months.
 
+
+### Maintainer impact
+It will be slightly harder to add new grammar changes to cabal because
+now we've to also deal with exact printing upon feature introduction.
+
+However we intend to introduce a thorough test suite preventing regressions.
+Furthermore we intend to document our findings of how 
+exact printing works via blog posts.
+
+The first one already shed light on the parser grammar.
++ https://blog.haskell.org/a-comment-preserving-cabal-parser/
+
+We intend another that shed's light on the field grammar.
+
+These blogposts make cabal development more accessible,
+and make onboarding of new maintainers easier.
 
 ## Open Questions
 
