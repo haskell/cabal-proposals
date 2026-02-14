@@ -242,6 +242,28 @@ for removal, if it involves a line, you've to fix up all following lines,
 
 The overal goal would be to roundtrip 99% of all hackage packages.
 
+### Exact printing
+The `pretty` library doesn't have a newline primitive, and I find it hard to position elements exactly.
+
+First, we traverse the `[PrettyField ann]` where `ann` allows us to retrieve exact `Position` information.
+We use that to create a representation that uses relative placements. Using a relative positioning
+makes layout easier, and works better when there are elements in the GPD that are programatically
+inserted.
+
+There are three ways I can continue from here:
+- Convince people to add the `prettyprinter` library to the boot library.
+  It depends on `template-haskell` but we can remove the multiline quasi-quoter to make it work.
+
+- Fix the 10 year old bug in `pretty` [here](https://github.com/haskell/pretty/issues/26).
+
+- Create a custom minimal pretty printer in Cabal.
+  Notably, we need the following law, where `place` is a primitive in our relative verison of Doc
+  algebra.
+  ```hs
+  nest indent (place leadingEmptyLines leadingSpace doc) = place leadingEmptyLines leadingSpace doc
+  ```
+  This would allow nesting to not influence the relatively placed elements.
+
 ## Alternatives Considered
 This [issue](https://github.com/haskell/cabal/issues/7544) is tracked on the cabal bug tracker.
 Essentially this proposal attempts to "solve" that issue.
