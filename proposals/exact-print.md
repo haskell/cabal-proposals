@@ -147,7 +147,7 @@ byte for byte roundtrip of all `hacakgePackage`:
 ```
 
 where `hackagePackage` is a cabal package found on hackage.
-to support exact printing a new field is added to `GenericPackageDescritpion`:
+to support exact printing a new field is added to `GenericPackageDescription`:
 
 ```haskell
 data GenericPackageDescription {
@@ -169,7 +169,7 @@ Where Exact position is:
 data ExactPosition = ExactPosition {namePosition :: Position
                                   , argumentPosition :: [Position] }
 ```
-And `Postion` is just a row and column coordinate of a textfile.
+And `Position` is just a row and column coordinate of a textfile.
 This type already exists in cabal.
 
 A namespace is used to find exact positions:
@@ -218,7 +218,7 @@ exactPrint package = ...
 
 ```
 
-Then we attach all the meta data to these `Fields` with `anotatePostions`:
+Then we attach all the meta data to these `Fields` with `annotatePositions`:
 ```haskell
 attachPositions :: [NameSpace] -> Map [NameSpace] ExactPosition -> [PrettyField ()] -> [PrettyField (Maybe ExactPosition)]
 ```
@@ -240,14 +240,14 @@ The issue for addition is that you now have to invent exact positions.
 for removal, if it involves a line, you've to fix up all following lines, 
 (and it has to know something was removed).
 
-The overal goal would be to roundtrip 99% of all hackage packages.
+The overall goal would be to roundtrip 99% of all hackage packages.
 
 ### Exact printing
 The `pretty` library doesn't have a newline primitive, and I find it hard to position elements exactly.
 
 First, we traverse the `[PrettyField ann]` where `ann` allows us to retrieve exact `Position` information.
 We use that to create a representation that uses relative placements. Using a relative positioning
-makes layout easier, and works better when there are elements in the GPD that are programatically
+makes layout easier, and works better when there are elements in the GPD that are programmatically
 inserted.
 
 There are three ways I can continue from here:
@@ -257,7 +257,7 @@ There are three ways I can continue from here:
 - Fix the 10 year old bug in `pretty` [here](https://github.com/haskell/pretty/issues/26).
 
 - Create a custom minimal pretty printer in Cabal.
-  Notably, we need the following law, where `place` is a primitive in our relative verison of Doc
+  Notably, we need the following law, where `place` is a primitive in our relative version of Doc
   algebra.
   ```hs
   nest indent (place leadingEmptyLines leadingSpace doc) = place leadingEmptyLines leadingSpace doc
@@ -298,14 +298,14 @@ So at least what we can do with this proposal is come to a consensus what
 a good solution looks like.
 And let the perfect not be the enemy of good.
 
-Another effort revolved around creating a seperate AST[^ast], 
+Another effort revolved around creating a separate AST[^ast],
 which was against maintainer recommendation because it'd make the issue even bigger, 
 and then [abandoned](https://github.com/haskell/cabal/pull/9385).
 They got discouraged because they received no maintainer feedback
 after [one and a half year](https://discourse.haskell.org/t/pre-proposal-cabal-exact-print/9582/2?u=jappie).
 
 A related effort is to build combinators that allow modifyng the `Field` type directly.
-This would depracate the `GenericPackage` structure and make an alternative structure
+This would deprecate the `GenericPackage` structure and make an alternative structure
 available.
 A proof of concept was developed during zurich hack
 https://discourse.haskell.org/t/pre-proposal-cabal-exact-print/9582/9?u=jappie
@@ -350,11 +350,11 @@ Compile errors can be solved by merging the common stanzas in to get the origina
 or say there are no imports upon setting: `noImports`.
 
 Because we make the common stanza imports explicit like this the user
-will gain the capability to write common stanza's programatically,
+will gain the capability to write common stanza's programmatically,
 which they currently cannot do via `GenericPackageDescription`.
 
 The discussion can be seen [here](https://github.com/haskell/cabal/pull/11277#issuecomment-3679092808).
-In practice pattern synonyms isn't quite powerfull enough for full backwards compatibility on record updates.
+In practice pattern synonyms isn't quite powerful enough for full backwards compatibility on record updates.
 
 There is a lot of breakage in the Pretty modules.
 We don't expect this to be a major problem however for most cabal client
@@ -373,7 +373,7 @@ we can:
 + makes it easier for users of the cabal library to deal with cabal files, 
   such as hpack, HLS and cabal-fmt
 + makes maintaining cabal itself easier, 
-  eg cabal init could be described via `GenericPackageDesription`
+  eg cabal init could be described via `GenericPackageDescription`
 
 Furthermore I've heard that the HLS project will benefit this effort,
 it could add a dependencies plugin for example: https://github.com/haskell/haskell-language-server/issues/155
