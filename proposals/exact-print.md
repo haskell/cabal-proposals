@@ -356,12 +356,24 @@ which they currently cannot do via `GenericPackageDescription`.
 The discussion can be seen [here](https://github.com/haskell/cabal/pull/11277#issuecomment-3679092808).
 In practice pattern synonyms isn't quite powerful enough for full backwards compatibility on record updates.
 
-There is a lot of breakage in the Pretty modules.
-We don't expect this to be a major problem however for most cabal client
-libraries because the Pretty printer was mostly broken before our changes.
+We don't expect this to be a major problem for most cabal client libraries, 
+as the existing `Pretty` printer had known limitations that 
+previously led the cabal client to hide its help text.
 
-TODO: go over rest of the PR
+### Testing compatibility
+To get an idea of how much breakage these changes introduce I propose
+a sampling of direct dependencies of Cabal.
 
+We can use the cabal.project file to tell a specific project
+to build with a our custom version of cabal.
+We could for example use this on `gi-gtk` or `gtk2hs` and see the impact on their build.
+Because we only modified a couple fields in GPD we expect 
+either no build errors, 
+or build errors that only require calling a single extra function to solve them.
+
+We could also test larger part of the ecosystem by using a head.hackage
+style approach and patch lower level dependencies for our changed cabal version.
+Depends on how much we want to test for breakage.
 
 ## Interested parties
 
@@ -378,17 +390,26 @@ we can:
 Furthermore I've heard that the HLS project will benefit this effort,
 it could add a dependencies plugin for example: https://github.com/haskell/haskell-language-server/issues/155
 
-TODO: List out major users of cabal (the library). get their feedback.
+Direct dependencies of cabal-syntax on stackage are:
++ autoexporter, 
++ Cabal, 
++ cabal-gild, 
++ cabal-install, 
++ cabal-install-solver, 
++ hackage-revdeps, 
++ hackage-security, 
++ imp, 
++ jailbreak-cabal
 
-Okay, now how to contact all these?
--> probably I'll just use the hackage api to extract all email addresses from the cabal files.
--> I'll ask hecate too
+There are many more that directly depend on Cabal as well.
+There are hundreds on hackage.
+
+We could make a post on discourse as well to ask if anyone else is interested.
 
 ## Implementation Notes
 
 Yes me and Leana.
 Timeline should be around 4 months.
-
 
 ### Maintainer impact
 It will be slightly harder to add new grammar changes to cabal because
@@ -408,14 +429,14 @@ and make onboarding of new maintainers easier.
 
 ## Open Questions
 
-Since common stanza's have been solved.
+We introduced a custom pretty printer now, we're not sure if this is the right approach.
+CF: https://github.com/haskell/cabal/issues/11227#issuecomment-3901663867
+Jappie encouraged Leana down this path because she drafted out a small printer in a couple days,
+and it seemed to immediatly solve problems she had been strugling with for weeks.
+Would be good if anyone has more advice on this?
 
-Currently we're struggling with how to retrieve the "trivia" fields
-from build depends, 
-Leana is going to make a prototype to investigate that.
-cf: https://github.com/haskell/cabal/issues/11227#issuecomment-3678820700
-We want to know if we get it out of fieldgrammar and store it
-in a structured way.
+We're not sure how to deal with trailing white space on empty lines?
+The lexer appears to drop them.
 
 
 ## References
