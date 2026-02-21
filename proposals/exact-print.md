@@ -432,7 +432,7 @@ and make onboarding of new maintainers easier.
 We introduced a custom pretty printer now, we're not sure if this is the right approach.
 CF: https://github.com/haskell/cabal/issues/11227#issuecomment-3901663867
 Jappie encouraged Leana down this path because she drafted out a small printer in a couple days,
-and it seemed to immediatly solve problems she had been strugling with for weeks.
+and it seemed to immediately solve problems she had been struggling with for weeks.
 Would be good if anyone has more advice on this?
 
 We're not sure how to deal with trailing white space on empty lines?
