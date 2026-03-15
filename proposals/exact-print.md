@@ -199,7 +199,7 @@ library
     build-depends:     base <5
 ```
 
-Would be encoded as:
+Would have the namespace encoded as:
 ```haskell
 ,[NameSpace {nameSpaceName = "library", nameSpaceSectionArgs = []},NameSpace {nameSpaceName = "if", nameSpaceSectionArgs = ["flag(foo)"]},NameSpace {nameSpaceName = "build-depends", nameSpaceSectionArgs = []}]
 ```
