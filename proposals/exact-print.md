@@ -207,7 +207,7 @@ Would have the namespace encoded as:
 This gives a unique way of figuring out the exact position of the build-depends field.
 Although conditionals need a little bit more refinement, see the conditional section for that.
 
-For comments some parser modifications were needed which were developed during zurich hack 2024.
+For comments some parser modifications were needed which were developed during ZuriHac 2024.
 This was a big uncertainty which now has been addressed.
 
 It's unclear what other fields are required right now.
@@ -286,9 +286,11 @@ Because there either is no trivia, or we made a mistake in the lookup or inserti
 The double meanings of no trivia is hard to work with and debug.
 The golden test will become a lot smaller because we no
 longer have to track name spaces.
-Finally Monoidal fields would work way easier because we no longer have to figure out which field was use to recreate provenance.
-
-We recurse in all necessary fields to apply the same trick:
+Furthermore Monoidal fields would work way easier because we no longer have to figure out which field was use to recreate provenance.
+Finally, this approach is backward compatible because the original GPD type doesn't change it records,
+with the `Modify` type class swapping out the Identity type constructor with the underlying type.
+This is the magic.
+We can recurse in all necessary fields to apply the same trick:
 
 ```
 type PackageDescription = PackageDescription' Identity
