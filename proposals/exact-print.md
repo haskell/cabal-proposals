@@ -126,7 +126,7 @@ we just made a decision here to do it in the main library assuming it exists.
 We also assumed there would be no conditionals, 
 all these questions are what a program to add dependencies should ask to a user,
 and the `GenericPackageDescription` type guides the programmer in asking the right questions.
-Therefore, we can say that `GenericPackageDescription` is stronger typed then `Field`.
+Therefore, we can say that `GenericPackageDescription` is stronger typed than `Field`.
 Note that there is no low level syntax mangling going on at all,
 because the functions exposed in the cabal library takes care of that for us.
 
@@ -143,11 +143,19 @@ This function has the following properties:
 
 byte for byte roundtrip of all `hacakgePackage`:
 ```haskell
-  forall (hackagePackage :: ByteString) . (printExact <$> (parseGeneric hackagePackage)) == Right hackagePackage
+  forall (hackagePackage :: ByteString) . (printExact <$> parseGeneric hackagePackage) == Right hackagePackage
 ```
 
-where `hackagePackage` is a cabal package found on hackage.
-to support exact printing a new field is added to `GenericPackageDescription`:
+Note that Leana and me have recently discussed an alternative way of doing this.
+The name space approach works, but progress is slow because:
++ Figuring out why something isn't in the trivia tree is hard.
++ The trivia tree creates large golden tests which are hard to read.
++ Monoidal fields would work way easier because we no longer have to figure out which field was use to recreate provenance.
+We developed an alternative approach in the barbies section.
+
+### (TWG) Namespace approach
+where `hackagePackage` is a cabal package found on Hackage.
+To support exact printing a new field is added to `GenericPackageDescription`:
 
 ```haskell
 data GenericPackageDescription {
@@ -156,6 +164,7 @@ data GenericPackageDescription {
  }
 ```
 
+
 Which in turn contains various meta data we need for exact printing:
 ```haskell
 data ExactPrintMeta = ExactPrintMeta
@@ -163,8 +172,10 @@ data ExactPrintMeta = ExactPrintMeta
   , exactComments :: Map Position Text
   }
 ```
-
-Where Exact position is:
+If we store comments like this it would be easy to add multiline comments as well, 
+because now we don't have to intercalate everything with comments.
+In this, 
+Exact position is:
 ```haskell
 data ExactPosition = ExactPosition {namePosition :: Position
                                   , argumentPosition :: [Position] }
@@ -187,10 +198,12 @@ library
   if flag(foo)
     build-depends:     base <5
 ```
+
 Would be encoded as:
 ```haskell
 ,[NameSpace {nameSpaceName = "library", nameSpaceSectionArgs = []},NameSpace {nameSpaceName = "if", nameSpaceSectionArgs = ["flag(foo)"]},NameSpace {nameSpaceName = "build-depends", nameSpaceSectionArgs = []}]
 ```
+
 This gives a unique way of figuring out the exact position of the build-depends field.
 Although conditionals need a little bit more refinement, see the conditional section for that.
 
@@ -241,6 +254,51 @@ for removal, if it involves a line, you've to fix up all following lines,
 (and it has to know something was removed).
 
 The overall goal would be to roundtrip 99% of all hackage packages.
+
+### In tree annotated (barbies)
+In this approach we try to eat the cake and have it too with some clever type machinery.
+We want to be able to annotate `GenericPackageDescription` with exact data,
+however we also want to keep it backwards compatible.
+Here we we're inspired by the [barbies](https://hackage.haskell.org/package/barbies) 
+package and a bit of magic. ✨
+
+```haskell
+data Annotated a = Annotated Trivia a
+
+type family Modify t a where
+  Modify Identity a = a -- backwards compitable
+  Modify Annotated a = Annotated a
+  Modify _ _ = TypeError (Text "Unknown modifier used")
+
+type GenericPackageDescription = GenericPackageDescription' Identity
+type ExactGenericPackageDescription = GenericPackageDescription' Annotated
+
+data GenericPackageDescription' f = GenericPackageDescription
+  { packageDescription :: Modify f (PackageDescription' f),
+  ...
+  }
+```
+This will allow us to retain the shape of the parse result. 
+Solving the following problems:
+
+In field grammar we sidestep the problem where we fail to lookup trivia.
+Because there either is no trivia, or we made a mistake in the lookup or insertion.
+The double meanings of no trivia is hard to work with and debug.
+The golden test will become a lot smaller because we no
+longer have to track name spaces.
+Finally Monoidal fields would work way easier because we no longer have to figure out which field was use to recreate provenance.
+
+We recurse in all necessary fields to apply the same trick:
+
+```
+type PackageDescription = PackageDescription' Identity
+type ExactPackageDescription = PackageDescription' Annotated
+
+data PackageDescription' f = PackageDescription {
+    specVersion :: Modify f CabalSpecVersion,
+    ...
+    }
+```
 
 ### Exact printing
 The `pretty` library doesn't have a newline primitive, and I find it hard to position elements exactly.
