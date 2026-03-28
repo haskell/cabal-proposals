@@ -155,107 +155,33 @@ We developed an alternative approach in the barbies section.
 
 ### (TWG) Namespace approach
 where `hackagePackage` is a cabal package found on Hackage.
-To support exact printing a new field is added to `GenericPackageDescription`:
+To support exact printing a new type can wrap `GenericPackageDescription`, called `AnnotedGpd`:
 
 ```haskell
-data GenericPackageDescription {
- ...
- , exactPrintMeta :: ExactPrintMeta
+data AnnotatedGpd {
+ , unAnnotatedGpd :: GenericPackageDescription 
+ , exactComments :: ExactPrintMeta
  }
 ```
+We can return this from the parser.
+This contains the data we just don't need in cabal
+proper, but do need for printing like comments:
 
-
-Which in turn contains various meta data we need for exact printing:
 ```haskell
 data ExactPrintMeta = ExactPrintMeta
-  { exactPositions :: Map [NameSpace] ExactPosition
-  , exactComments :: Map Position Text
+  { exactComments :: Map Position Text
   }
 ```
+Implementation example is here: https://github.com/haskell/cabal/pull/11252/changes#diff-99cd3111ed91eea7db1e3b8b3c20eb2cf7999840c2f161ffdd36943b10cff71dR19
+
 If we store comments like this it would be easy to add multiline comments as well, 
 because now we don't have to intercalate everything with comments.
 In this, 
-Exact position is:
-```haskell
-data ExactPosition = ExactPosition {namePosition :: Position
-                                  , argumentPosition :: [Position] }
-```
-And `Position` is just a row and column coordinate of a textfile.
-This type already exists in cabal.
-
-A namespace is used to find exact positions:
-```haskell
-data NameSpace = NameSpace
-  { nameSpaceName :: FieldName
-  , nameSpaceSectionArgs :: [ByteString]
-  }
-  deriving (Show, Eq, Typeable, Data, Ord, Generic)
-```
-It just encodes a path down the rose tree.
-for example:
-```haskell
-library
-  if flag(foo)
-    build-depends:     base <5
-```
-
-Would have the namespace encoded as:
-```haskell
-,[NameSpace {nameSpaceName = "library", nameSpaceSectionArgs = []},NameSpace {nameSpaceName = "if", nameSpaceSectionArgs = ["flag(foo)"]},NameSpace {nameSpaceName = "build-depends", nameSpaceSectionArgs = []}]
-```
-
-This gives a unique way of figuring out the exact position of the build-depends field.
-Although conditionals need a little bit more refinement, see the conditional section for that.
-
-For comments some parser modifications were needed which were developed during ZuriHac 2024.
-This was a big uncertainty which now has been addressed.
-
-It's unclear what other fields are required right now.
-For example build bounds might require another map 
-like `Map ([NameSpace], PackageVersionConstraint) Original`,
-this kind of representation allows us to retrieve the original only if it hasn't changed.
-However I'm confident all of this is do-able.
-
-Many are concerned about using `Field` I suppose for the printing part, 
-but we don't use that exact type, we use `PrettyField` because the pretty printer
-already had a decent `FieldGrammar`,
-and the type is almost the same.
-The first thing `exactPrint` does is use the existing pretty field grammar to
-create pretty fields:
-```haskell
-exactPrint :: GenericPackageDescription -> Text
-exactPrint package = ...
-  where
-    fields :: [PrettyField ()]
-    fields = ppGenericPackageDescription (specVersion (packageDescription (package))) package
-
-```
-
-Then we attach all the meta data to these `Fields` with `annotatePositions`:
-```haskell
-attachPositions :: [NameSpace] -> Map [NameSpace] ExactPosition -> [PrettyField ()] -> [PrettyField (Maybe ExactPosition)]
-```
-Here we put the various pieces of meta data directly into the field for parsing.
-Maybe you have an exact position at a certain point during printing,
-which you can use to "repair" the default pretty printing behavior.
-
-Preliminary testing shows that this approach works with multiple sections of cabal files,
-and now also with some basic comments.
-Comments likely have to be worked out further as we only made that one test pass,
-but the 'tools', and more importantly, the understanding is in place.
-There is a working prototype.
-
-Change of the `GenericPackageDescription` must be possible for
-+ module addition/removal
-+ library addition/removal
-
-The issue for addition is that you now have to invent exact positions.
-for removal, if it involves a line, you've to fix up all following lines, 
-(and it has to know something was removed).
-
-The overall goal would be to roundtrip 99% of all hackage packages.
 
 ### In tree annotated (barbies)
+This is the latest design which is quite different from the original
+TWG proposal: https://github.com/haskellfoundation/tech-proposals/blob/main/proposals/0000-cabal-exact-printer.md#technical-content
+
 In this approach we try to eat the cake and have it too with some clever type machinery.
 We want to be able to annotate `GenericPackageDescription` with exact data,
 however we also want to keep it backwards compatible.
@@ -301,6 +227,33 @@ data PackageDescription' f = PackageDescription {
     ...
     }
 ```
+
+We've to slightly modify our previously designed `AnnotatedGpd`, which will
+now be:
+```
+data AnnotatedGpd {
+ , unAnnotatedGpd :: ExactGenericPackageDescription 
+ , exactComments :: ExactPrintMeta
+ }
+```
+This `AnnotatedGpd` can actually be exact printed, modified and be used by the rest of cabal 
+once you strip the trivia.
+If you keep the original `AnnotatedGpd` around you then can restore the trivia
+after you've done your cabal tasks.
+
+Here we put the various pieces of meta data directly into the field for parsing.
+Maybe you have an exact position at a certain point during printing,
+which you can use to "repair" the default pretty printing behavior.
+
+Change of the `GenericPackageDescription` must be possible for
++ module addition/removal
++ library addition/removal
+
+The issue for addition is that you now have to invent exact positions.
+for removal, if it involves a line, you've to fix up all following lines, 
+(and it has to know something was removed).
+
+The overall goal would be to roundtrip 99% of all hackage packages.
 
 ### Exact printing
 The `pretty` library doesn't have a newline primitive, and I find it hard to position elements exactly.
@@ -470,6 +423,7 @@ We could make a post on discourse as well to ask if anyone else is interested.
 
 Yes me and Leana.
 Timeline should be around 4 months.
+This excludes reviewing time.
 
 ### Maintainer impact
 It will be slightly harder to add new grammar changes to cabal because
