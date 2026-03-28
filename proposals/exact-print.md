@@ -120,6 +120,8 @@ main = do
         in
         Text.writeFile "my.cabal" $ exactPrint modified
 ```
+We're not modifying any of the exact print meta. 
+the exact printer is smart enough to add new lines for example if necessary and relatively shift everything below upon line addition.
 
 All the difficulty in this programming lies in figuring out where to place a dependency,
 we just made a decision here to do it in the main library assuming it exists.
@@ -429,6 +431,7 @@ This excludes reviewing time.
 ### Maintainer impact
 It will be slightly harder to add new grammar changes to cabal because
 now we've to also deal with exact printing upon feature introduction.
+This should be caught in the test suite via the round tripping tests, which should give complete coverage of the AnotatedGPD type.
 
 However we intend to introduce a thorough test suite preventing regressions.
 Furthermore we intend to document our findings of how 
@@ -437,7 +440,7 @@ exact printing works via blog posts.
 The first one already shed light on the parser grammar.
 + https://blog.haskell.org/a-comment-preserving-cabal-parser/
 
-We intend another that shed's light on the field grammar.
+We intend another that sheds light on the field grammar.
 
 These blogposts make cabal development more accessible,
 and make onboarding of new maintainers easier.
