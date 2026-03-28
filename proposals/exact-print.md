@@ -263,19 +263,13 @@ We use that to create a representation that uses relative placements. Using a re
 makes layout easier, and works better when there are elements in the GPD that are programmatically
 inserted.
 
-There are three ways I can continue from here:
-- Convince people to add the `prettyprinter` library to the boot library.
-  It depends on `template-haskell` but we can remove the multiline quasi-quoter to make it work.
-
-- Fix the 10 year old bug in `pretty` [here](https://github.com/haskell/pretty/issues/26).
-
-- Create a custom minimal pretty printer in Cabal.
-  Notably, we need the following law, where `place` is a primitive in our relative version of Doc
-  algebra.
-  ```hs
-  nest indent (place leadingEmptyLines leadingSpace doc) = place leadingEmptyLines leadingSpace doc
-  ```
-  This would allow nesting to not influence the relatively placed elements.
+To address this we created a custom minimal pretty printer in Cabal.
+Notably, we need the following law, where `place` is a primitive in our relative version of Doc
+algebra.
+```hs
+nest indent (place leadingEmptyLines leadingSpace doc) = place leadingEmptyLines leadingSpace doc
+```
+This would allow nesting to not influence the relatively placed elements.
 
 ## Alternatives Considered
 This [issue](https://github.com/haskell/cabal/issues/7544) is tracked on the cabal bug tracker.
@@ -332,6 +326,13 @@ Currently it's unclear to me how this would work with modifications
 on `GenericPackageDescription`.
 Although the proposal presented here converts `GenericPackageDescription` into
 `PrettyField` which is similar to `Field`, before printing.
+
+We had a large attempt at using a trivia tree based approach
+which would track the exact positions in a dedicated tree.
+This works however implementation is slow and difficult.
+A missing item from the tree can mean many things
+and it's hard to verify which one it is.
+See details here: https://github.com/haskell/cabal/pull/11425
 
 This proposal only focusess only on getting exact printing
 to work with a minimal footprint.
