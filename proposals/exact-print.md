@@ -215,7 +215,7 @@ The double meanings of no trivia is hard to work with and debug.
 The golden test will become a lot smaller because we no
 longer have to track name spaces.
 Furthermore Monoidal fields would work way easier because we no longer have to figure out which field was use to recreate provenance.
-Finally, this approach is backward compatible because the original GPD type doesn't change it records,
+Finally, this approach is backward compatible because the original GenericPackageDescription (GPD) type doesn't change it records,
 with the `Modify` type class swapping out the Identity type constructor with the underlying type.
 This is the magic.
 We can recurse in all necessary fields to apply the same trick:
@@ -242,6 +242,12 @@ This `AnnotatedGpd` can actually be exact printed, modified and be used by the r
 once you strip the trivia.
 If you keep the original `AnnotatedGpd` around you then can restore the trivia
 after you've done your cabal tasks.
+
+Note that this approach is similar to [trees that grow](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/trees-that-grow.pdf), 
+although GPD isn't really an AST.
+We modify the entire fields with the type family, 
+there is only one type family 
+and we only do this because we want backwards compatibility.
 
 Here we put the various pieces of meta data directly into the field for parsing.
 Maybe you have an exact position at a certain point during printing,
