@@ -481,8 +481,13 @@ to the exact column where the field name appeared (reconstructing indentation),
 then appends `fieldName <> ":"`, then uses `placeAt fieldLinePos` to position
 the field value — the gap between the colon and the value is implicit
 in the distance between where the colon ends and where `fieldLinePos` begins.
-Spaces between the field name and `:` are not a concern because the cabal
-lexer tokenizes `fieldname:` as a unit (no spaces are permitted there).
+Note that spaces between the field name and `:` (e.g. `build-depends :`)
+are currently not preserved: the lexer emits `TokSym` and `Colon` as separate
+tokens with whitespace silently consumed between them,
+and the printer always emits `fieldName <> ":"` with no gap.
+In practice this is rare — a scan of Hackage could quantify how many packages
+use this style.
+We can address this if it's a problem with more trivia!
 
 #### Spaces inside version bounds
 
