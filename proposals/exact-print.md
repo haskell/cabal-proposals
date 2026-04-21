@@ -466,19 +466,23 @@ and each inner list contains the dependencies on that line with their trivia.
 This means we can always reconstruct how many `build-depends` fields there were
 and which dependencies belonged to which.
 
-The field-level trivia — indentation of the field name, number of spaces between
-`build-depends` and `:`, and the position of the field value — is stored in the `Positions` type
-that accompanies each group:
+The field-level trivia — indentation and position of the field value —
+is stored in the `Positions` type that accompanies each group:
 
 ```haskell
 data Positions = Positions
-  { fieldNamePos :: Position   -- row/column of the field name (captures indentation)
-  , fieldLinePos :: Position   -- row/column of the field value (captures spacing after ':')
+  { fieldNamePos :: Position   -- row/column of the field name
+  , fieldLinePos :: Position   -- row/column of the field value
   }
 ```
 
-The printer uses `fieldNamePos` to reconstruct the indentation of `build-depends:`,
-and `fieldLinePos` to reconstruct the spacing between the colon and the first value.
+The printer uses `placeAt fieldNamePos` to emit whitespace moving the cursor
+to the exact column where the field name appeared (reconstructing indentation),
+then appends `fieldName <> ":"`, then uses `placeAt fieldLinePos` to position
+the field value — the gap between the colon and the value is implicit
+in the distance between where the colon ends and where `fieldLinePos` begins.
+Spaces between the field name and `:` are not a concern because the cabal
+lexer tokenizes `fieldname:` as a unit (no spaces are permitted there).
 
 #### Spaces inside version bounds
 
