@@ -81,7 +81,7 @@ What advantage do existing tools get by making cabal smart enough
 to modify it's own files?
 It's hard to guarantee stability across projects if many functionalities
 are distributed across many projects.
-For example a newly introduced tool called [cabal-add](https://github.com/Bodigrim/cabal-add), would need to take into account any 
+For example [cabal-add](https://github.com/Bodigrim/cabal-add) needs to take into account any
 syntax change to cabal, *forever*. 
 This is true for other tools as well that want to modify cabal files (such as HLS).
 If cabal would support an exact printer all syntax odds and ends
@@ -124,6 +124,10 @@ The exact printer is smart enough to add new lines if necessary and relatively s
 All the difficulty lies in figuring out where to place a dependency;
 we made a decision here to do it in the main library assuming it exists.
 We also assumed there would be no conditionals.
+A tool wanting to add a dependency to a common stanza (one of the first feature
+requests for `cabal-add`) would use the new `gpdCommonStanza` field
+that is available after deferring common stanza merging
+(see [Common stanza merging](#common-stanza-merging) below and [PR #11277](https://github.com/haskell/cabal/pull/11277)).
 These are the questions a program that adds dependencies should ask a user,
 and the `GenericPackageDescription` type guides the programmer in asking the right questions.
 `GenericPackageDescription` is more strongly typed than `Field`:
@@ -142,7 +146,10 @@ addExposedModule modName gpd =
       let lib = condTreeData tree
        in tree { condTreeData = lib { exposedModules = modName : exposedModules lib } }
 ```
-This is the kind of operation that `cabal-add` or HLS could use.
+This is the kind of operation that `cabal-add` already supports
+(and HLS uses through `cabal-add`). With the exact printer in the cabal library,
+such tools could perform these operations through the cabal library directly,
+gaining the stability guarantees and type safety described above.
 The caller only manipulates typed Haskell values;
 the exact printer handles all formatting and position bookkeeping.
 
@@ -165,7 +172,8 @@ Byte-for-byte roundtrip of all Hackage packages:
 The byte-for-byte roundtrip property holds where `hackagePackage` is a cabal package found on Hackage.
 
 We explored two approaches.
-The namespace (trivia-tree) approach works but progress was slow because:
+The namespace (trivia-tree) approach — where exact-print metadata (comments, positions, whitespace)
+is stored in a separate side-table keyed by a path into the GPD structure — works but progress was slow because:
 + Figuring out why something is missing from the trivia tree is hard.
 + The trivia tree creates large golden tests which are hard to read.
 + Monoidal fields would work more easily because we no longer have to figure out which field was used to recreate provenance.
@@ -215,24 +223,58 @@ A `HasAnnotation` kind selects between two modes:
 
 ```haskell
 data HasAnnotation = HasAnn | HasNoAnn
+```
 
+Rather than a single monolithic type family, we define a vocabulary of small,
+orthogonal closed type families that compose at each use site.
+Each family handles one aspect of annotation and reduces to identity when `m ~ HasNoAnn`:
+
+**1. `AnnotateWith` — attach trivia (whitespace, comma style) to a value:**
+
+```haskell
 type family AnnotateWith (trivia :: Type) (m :: HasAnnotation) (a :: Type) where
   AnnotateWith t HasNoAnn a = a          -- plain: just the value
   AnnotateWith t HasAnn  a = Ann t a     -- annotated: value wrapped with trivia
+
+-- Convenience alias for the common case:
+type Annotate (m :: HasAnnotation) (a :: Type) = AnnotateWith SurroundingText m a
 ```
 
-When `m ~ HasNoAnn`, the type family reduces to the bare value,
-so `GenericPackageDescriptionWith HasNoAnn` is identical to the old `GenericPackageDescription`.
-When `m ~ HasAnn`, values gain trivia wrappers.
-There are additional type families for attaching positions and preserving field grouping,
-but the core idea is this single conditional wrapper.
+**2. `AttachWith` — pair positional data with a value:**
 
-We use a closed type family with two equations rather than a type class or open type family.
+```haskell
+type family AttachWith (t :: Type) (m :: HasAnnotation) (a :: Type) where
+  AttachWith t HasAnn   a = (t, a)
+  AttachWith _ HasNoAnn a = a
+
+type AttachPositions (m :: HasAnnotation) (a :: Type) = AttachWith Positions m a
+type AttachPosition  (m :: HasAnnotation) (a :: Type) = AttachWith Position  m a
+```
+
+**3. `PreserveGrouping` — preserve list-of-groups structure for monoidal fields:**
+
+```haskell
+type family PreserveGrouping (m :: HasAnnotation) (a :: Type) where
+  PreserveGrouping HasAnn  a = [a]
+  PreserveGrouping HasNoAnn a = a
+```
+
+All three are closed type families with exactly two equations.
 Because the kind `HasAnnotation` has exactly two constructors,
-the two equations are exhaustive and GHC can reduce them fully at every use site.
-A `TypeError` catch-all is not needed:
-any type applied at kind `HasAnnotation` is either `HasAnn` or `HasNoAnn`,
-so there is no third case to reject.
+the equations are exhaustive and GHC reduces them fully at every use site.
+No `TypeError` catch-all is needed.
+
+Fields compose these families to express exactly the metadata they need.
+For example, `targetBuildDepends` nests all three:
+`PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (DependencyWith m))])`.
+When `m ~ HasNoAnn` this reduces to `[Dependency]`;
+when `m ~ HasAnn` it becomes `[(Positions, [(Position, Ann SurroundingText DependencyAnn)])]`.
+
+For types with their own recursive structure (like `VersionRange`),
+a module-local closed type family handles the recursion.
+`VersionRangeWith m` uses a local `Modify` family that pairs `Trivia SurroundingText`
+with leaf `Version` nodes and composite `VersionRangeWith HasAnn` nodes,
+while reducing to the bare types under `HasNoAnn`.
 
 #### Trivia types
 
@@ -271,9 +313,14 @@ data GenericPackageDescriptionWith (m :: HasAnnotation) = GenericPackageDescript
   , gpdScannedVersion  :: AnnotateWith Positions m (Maybe Version)
   , genPackageFlags    :: [PackageFlagWith m]
   , condLibrary        :: Maybe (CondTree ConfVar (LibraryWith m))
+  , gpdCommonStanzas   :: Map ImportName (CondTree ConfVar [Dependency] BuildInfoWith m)
   , ...
   }
 ```
+
+Note that common stanzas are no longer merged during parsing — they are retained
+in the `gpdCommonStanzas` field so the exact printer can reconstruct them.
+See [Common stanza merging](#common-stanza-merging) for details.
 
 The `m` parameter appears at every level, recursively parameterising the entire tree.
 `PackageDescriptionWith m`, `PackageFlagWith m`, `LibraryWith m` all follow the same pattern.
@@ -294,26 +341,12 @@ data BuildInfoWith (m :: HasAnnotation) = BuildInfo
   }
 ```
 
-When `m ~ HasNoAnn`, `AnnotateWith Positions HasNoAnn Bool` reduces to `Bool`
+When `m ~ HasNoAnn`, all type families reduce to identity:
+`AnnotateWith Positions HasNoAnn Bool` becomes `Bool`,
+`PreserveGrouping HasNoAnn [Dependency]` becomes `[Dependency]`,
 and `LibraryWith HasNoAnn` is just `Library` — nothing changes for existing code.
-When `m ~ HasAnn`, fields gain `Ann` wrappers carrying positions and whitespace.
-
-The parameterisation recurses through component types.
-For example `LibraryWith m` contains `BuildInfoWith m`,
-which in turn contains annotated fields:
-
-```haskell
-data BuildInfoWith (m :: HasAnnotation) = BuildInfo
-  { buildable          :: AnnotateWith Positions m Bool
-  , targetBuildDepends :: PreserveGrouping m
-                            (AttachPositions m [AttachPosition m (Annotate m (DependencyWith m))])
-  , ...
-  }
-```
-
-When `m ~ HasNoAnn` the field `targetBuildDepends` reduces to `[Dependency]` (the current type).
-When `m ~ HasAnn` it becomes `[(Positions, [( Position, Ann SurroundingText DependencyAnn)])]`,
-carrying per-occurrence position and whitespace data.
+When `m ~ HasAnn`, fields gain `Ann` wrappers, position tuples,
+and grouping lists as described in the core type machinery section above.
 
 #### Why this is better than the namespace approach
 
@@ -329,11 +362,23 @@ Furthermore:
 
 #### Relationship to Trees That Grow
 
-This approach is similar to [Trees That Grow](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/trees-that-grow.pdf),
+This approach is closely related to [Trees That Grow](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/trees-that-grow.pdf) (TTG),
 although GPD is not an AST.
-The key difference is that we use a single closed type family (`AnnotateWith`) rather than an open extension family per constructor.
-This keeps the machinery simple and avoids the pattern-match exhaustiveness problems
-that Trees That Grow can introduce in GHC's own codebase.
+We call it the "barbies approach" because the parameterisation pattern
+(a type parameterised by a tag that selects between representations)
+is inspired by the [barbies](https://hackage.haskell.org/package/barbies) library's
+Higher-Kinded Data pattern, but the mechanism is indeed the same idea as TTG.
+The key difference from GHC's use of TTG is that we use multiple small composable
+closed type families (`AnnotateWith`, `AttachWith`, `PreserveGrouping`)
+rather than open extension families per constructor.
+In GHC's codebase, open TTG extension fields require wildcard catches in pattern matches
+because new constructors can be added by any pass — in practice this weakens
+exhaustiveness checking. Our closed type families avoid this:
+the kind `HasAnnotation` has exactly two inhabitants, so GHC reduces each family fully
+and there are no extension constructors requiring wildcards.
+Furthermore, because the families are composable, each field declares exactly
+the metadata it needs by nesting them — there is no per-constructor extension point
+to maintain.
 
 Concretely, for code that pattern-matches on GPD (such as `cabal check`):
 + When matching on `GenericPackageDescription` (i.e. `HasNoAnn`), all fields reduce to their current types.
@@ -367,6 +412,7 @@ For example, `parsecLeadingCommaListAnn` captures the comma and any surrounding 
 as `SurroundingText` trivia attached to the list element via `Ann`:
 
 ```haskell
+parsecLeadingCommaListAnn :: CabalParsing m => m (Ann SurroundingText a) -> m [Ann SurroundingText a]
 parsecLeadingCommaListAnn p =
   P.optional comma >>= \case
     Nothing -> toList <$> P.sepEndByNonEmptyAnn lp comma <|> pure []
@@ -381,6 +427,16 @@ parsecLeadingCommaListAnn p =
 The `SurroundingText` (leading and trailing whitespace strings) recorded per element
 contains the comma character and surrounding spaces.
 On printing, `applyTriviaDoc` replays the original text around each element.
+Concretely, `applyTriviaDoc` takes an `Ann SurroundingText a` and the pretty-printed `Doc`
+for the inner value, and prepends/appends the stored leading and trailing strings as raw text:
+
+```haskell
+applyTriviaDoc :: Ann SurroundingText a -> Doc -> Doc
+applyTriviaDoc (Ann (HasTrivia (SurroundingText leading trailing)) _) doc =
+    text leading <> doc <> text trailing
+applyTriviaDoc _ doc = doc  -- IsInserted / NoTrivia: use default formatting
+```
+
 This means leading-comma style, trailing-comma style, and mixed styles
 are all preserved through a roundtrip.
 
@@ -409,6 +465,20 @@ Each outer list element corresponds to one `build-depends:` line in the source f
 and each inner list contains the dependencies on that line with their trivia.
 This means we can always reconstruct how many `build-depends` fields there were
 and which dependencies belonged to which.
+
+The field-level trivia — indentation of the field name, number of spaces between
+`build-depends` and `:`, and the position of the field value — is stored in the `Positions` type
+that accompanies each group:
+
+```haskell
+data Positions = Positions
+  { fieldNamePos :: Position   -- row/column of the field name (captures indentation)
+  , fieldLinePos :: Position   -- row/column of the field value (captures spacing after ':')
+  }
+```
+
+The printer uses `fieldNamePos` to reconstruct the indentation of `build-depends:`,
+and `fieldLinePos` to reconstruct the spacing between the colon and the first value.
 
 #### Spaces inside version bounds
 
@@ -445,11 +515,35 @@ Several approaches to lossless parsing were discussed in [#11227](https://github
 + **GHC Exact Print Annotations** (raised by @Bodigrim): GHC attaches trivia to AST nodes via extension fields.
   Our approach is similar in spirit but simpler: GHC's syntax is much larger
   and uses open type families (Trees That Grow) which cause exhaustiveness issues.
-  Our closed type family with two constructors avoids this.
+  Our composable closed type families avoid this.
 
 + **cabal-fields / Field-level manipulation** (raised by @mpickering referencing cabal-add):
-  working at the `Field` level avoids touching GPD but loses type safety.
+  working at the `Field` level avoids touching GPD but means the programmer constructs
+  raw field lines as strings — there is no compiler check that e.g. a version range
+  like `>=4.9 && <5` is syntactically valid. With annotated GPD, the programmer
+  uses typed values (`Dependency`, `VersionRange`, etc.) and the printer handles syntax.
   See the "Why GPD rather than Field" section under Alternatives Considered.
+
+#### Common stanza merging
+
+Currently, common stanzas are merged (inlined) into their importing sections during parsing.
+After merging, the definitions and import sites are lost from the GPD — making it impossible
+to reconstruct the original file layout.
+
+We defer this merging to a later stage. A new field `gpdCommonStanzas` in
+`GenericPackageDescriptionWith` retains the common stanza definitions:
+
+```haskell
+gpdCommonStanzas :: Map ImportName (CondTree ConfVar [Dependency] (BuildInfoWith m))
+```
+
+The merging is performed lazily when downstream code accesses component fields through
+accessor functions (e.g. `mergeCondLibrary`). A bidirectional `PatternSynonym` is provided
+so that existing code using the old record syntax continues to compile.
+
+This change is implemented in [PR #11277](https://github.com/haskell/cabal/pull/11277)
+and was discussed in [#11227](https://github.com/haskell/cabal/issues/11227).
+See the [Backwards Compatibility](#backwards-compatibility--migration) section for migration details.
 
 #### Eliminating the namespace / side-table
 
@@ -469,30 +563,69 @@ The overall goal would be to roundtrip 99% of all hackage packages.
 
 #### Current roundtrip status
 
-There is no roundtrip failure data yet because the barbies prototype does not roundtrip.
-This is different from the earlier ZuriHac prototype which completely bypassed `FieldGrammar`
-and could roundtrip basic files.
-The barbies approach is much better integrated with the rest of cabal —
-it threads annotations through `FieldGrammar` itself via dual `HasNoAnn`/`HasAnn` instances —
-but this also makes modifying the field grammar the hardest part of the implementation,
-since the type class has many methods and each needs both instances.
-A first simple roundtrip test based on the barbies approach is expected soon.
+A basic parse-then-exact-print roundtrip now works end-to-end for `buildable`
+and `build-depends` fields.
+The test reads a `.cabal` file, parses it through the annotated field grammar,
+pretty-prints via `prettyFieldGrammar`, and renders through the new `ExactDoc`
+pipeline (see [Exact printing](#exact-printing) below).
+
+The barbies approach threads annotations through `FieldGrammar` itself
+via dual `HasNoAnn`/`HasAnn` instances.
+This makes the field grammar the hardest part of the implementation:
+each field grammar method needs both instances,
+and each list-valued field type needs `Newtype` instances for the `HasAnn` variant.
+Currently 2 of ~40 `BuildInfo` fields are wired up in the polymorphic grammar;
+the remaining fields need their corresponding instances to be written.
+The data types themselves are complete — it is the grammar dispatch that is incomplete.
 
 ### Exact printing
-The `pretty` library doesn't have a newline primitive, and I find it hard to position elements exactly.
 
-First, we traverse the `[PrettyField ann]` where `ann` allows us to retrieve exact `Position` information.
-We use that to create a representation that uses relative placements. Using a relative positioning
-makes layout easier, and works better when there are elements in the GPD that are programmatically
-inserted.
+Once the annotated GPD has been converted to `[PrettyFieldWith HasAnn]`
+(the intermediate representation used by cabal's existing printer),
+the final step is rendering these fields to text while preserving the original
+positions, indentation, and blank lines.
 
-To address this we created a custom minimal pretty printer in Cabal.
-Notably, we need the following law, where `place` is a primitive in our relative version of Doc
-algebra.
-```hs
-nest indent (place leadingEmptyLines leadingSpace doc) = place leadingEmptyLines leadingSpace doc
+Cabal's existing printer uses the `pretty` library, but `pretty` does not have
+a primitive for placing output at an exact position (row/column).
+It also lacks a newline primitive, making it hard to reproduce the exact number
+of blank lines between fields.
+
+We therefore created `ExactDoc`, a position-aware document type
+in `Distribution.Pretty.ExactDoc`:
+
+```haskell
+data ExactDoc where
+  Text        :: !Text -> ExactDoc
+  Nil         :: ExactDoc
+  Newline     :: ExactDoc
+  Concat      :: !ExactDoc -> !ExactDoc -> ExactDoc
+  StickyConcat :: !ExactDoc -> !ExactDoc -> ExactDoc
+  Place       :: !Int -> !Int -> !ExactDoc -> ExactDoc  -- absolute row, column
+  Nest        :: !Int -> !ExactDoc -> ExactDoc
 ```
-This would allow nesting to not influence the relatively placed elements.
+
+Rendering uses a `State Position` monad that tracks a cursor.
+When it encounters `Place row col`, it emits newlines and spaces
+to move the cursor to that absolute position.
+The key laws are:
+
++ `Place` is **idempotent**: inner `Place` wins over outer `Place`.
++ `Nest` distributes over `Concat` and `StickyConcat`
+  but does **not** override `Place`:
+
+```hs
+nest indent (place row col doc) = place row col doc
+```
+
+This ensures that fields with known source positions are placed exactly,
+while programmatically inserted fields (with no source position)
+fall through to `Nest`-based indentation.
+
+The bridge between the old pretty-printer world and `ExactDoc` is
+`prettyFieldsToExactDoc`, which walks `[PrettyFieldWith HasAnn]`
+and uses each field's parsed `Position` to call `Place` on the field name
+and field lines. Standard `Doc` values from the existing pretty-printer
+are converted to `ExactDoc` via `docToExactDoc`.
 
 ## Alternatives Considered
 This [issue](https://github.com/haskell/cabal/issues/7544) is tracked on the cabal bug tracker.
@@ -597,12 +730,14 @@ At the `HasNoAnn` type alias this is the same as before,
 but code that is polymorphic over the GPD parameter or that
 pattern-matches on `GenericPackageDescriptionWith` directly will see `LibraryWith m`.
 
-Additionally, common stanza merging will be postponed to allow
-re-creating the common stanzas upon exact printing.
-Compile errors can be solved by calling `mergeCondLibrary` to get the merged type,
-or by calling `noImports` if there are no common stanza imports.
+Additionally, common stanza merging is deferred as described in
+[Common stanza merging](#common-stanza-merging) above.
+This is the one deliberately breaking change: code that previously relied on common stanzas
+being pre-merged into component fields will need to call `mergeCondLibrary` to get the merged type,
+or call `noImports` if there are no common stanza imports.
 
-The discussion can be seen [here](https://github.com/haskell/cabal/pull/11277#issuecomment-3679092808).
+The design and impact were discussed in
+[PR #11277](https://github.com/haskell/cabal/pull/11277#issuecomment-3679092808).
 In practice `PatternSynonyms` is not powerful enough for full backwards compatibility on record updates.
 
 #### Migration path
@@ -664,8 +799,39 @@ The primary beneficiaries would be cabal users:
 + Makes maintaining cabal itself easier,
   e.g. `cabal init` could be described via `GenericPackageDescription`.
 
-The HLS project would benefit from this effort;
-it could add a dependencies plugin for example: https://github.com/haskell/haskell-language-server/issues/155
+The HLS project would benefit from this effort.
+HLS partially implemented cabal file editing
+([haskell-language-server#155](https://github.com/haskell/haskell-language-server/issues/155), now closed)
+via the [cabal-add](https://github.com/Bodigrim/cabal-add) library,
+which works at the `Field` level (untyped syntax).
+This covers adding dependencies
+([#4360](https://github.com/haskell/haskell-language-server/pull/4360))
+and adding modules to `exposed-modules`/`other-modules`
+([#4617](https://github.com/haskell/haskell-language-server/pull/4617)).
+
+However, several more fine-grained operations remain open
+that are difficult to implement at the `Field` level:
+
++ **Module rename** ([#4861](https://github.com/haskell/haskell-language-server/pull/4861), draft):
+  renaming a module requires updating the `.cabal` file, the Haskell module header,
+  and all import sites simultaneously.
+  At the `Field` level this means string-matching module names inside raw field lines;
+  with annotated GPD the tool would traverse typed `ModuleName` values
+  in `exposedModules`, `otherModules`, etc.
++ **Auto-detect new modules** ([#3595](https://github.com/haskell/haskell-language-server/issues/3595), open):
+  automatically adding modules that GHC detects as missing.
+  With annotated GPD, the tool manipulates a typed list rather than
+  splicing text into a field line while preserving comma style.
++ **Multiple package suggestions** ([#4360 TODO](https://github.com/haskell/haskell-language-server/pull/4360)):
+  when a module could come from several packages,
+  only one suggestion is currently offered.
+  With GPD-level access, HLS could inspect existing dependencies
+  to rank suggestions more accurately.
+
+A cabal-library-based exact printer would let HLS perform these edits
+through the cabal library directly, gaining stability guarantees
+and eliminating the need for `cabal-add` to independently track
+cabal syntax changes.
 
 ### Potentially affected downstream packages
 
@@ -727,11 +893,16 @@ and make onboarding of new maintainers easier.
 
 ## Open Questions
 
-We introduced a custom pretty printer now, we're not sure if this is the right approach.
+The `ExactDoc` custom pretty printer is working and produces correct roundtrips
+for the fields wired up so far.
 CF: https://github.com/haskell/cabal/issues/11227#issuecomment-3901663867
-Jappie encouraged Leana down this path because she drafted out a small printer in a couple days,
-and it seemed to immediately solve problems she had been struggling with for weeks.
-Would be good if anyone has more advice on this?
+Feedback on the `ExactDoc` design is welcome.
+
+List element positions are currently local to the field (relative to the field line),
+not file-absolute. A "local exact print" that gets offset-adjusted to file coordinates
+is planned but not yet implemented.
+
+Section arguments (e.g. `executable foo`) are not yet exactly positioned.
 
 We're not sure how to deal with trailing white space on empty lines?
 The lexer appears to drop them.
@@ -739,7 +910,7 @@ The lexer appears to drop them.
 
 ## References
 
-+ https://github.com/haskell/haskell-language-server/issues/155
++ https://github.com/haskell/haskell-language-server/issues/155 (closed)
 + https://github.com/haskell/cabal/issues/7304
 + https://github.com/haskell/cabal/issues/7337
 + https://github.com/haskell/cabal/issues/6187
