@@ -371,11 +371,17 @@ Higher-Kinded Data pattern, but the mechanism is indeed the same idea as TTG.
 The key difference from GHC's use of TTG is that we use multiple small composable
 closed type families (`AnnotateWith`, `AttachWith`, `PreserveGrouping`)
 rather than open extension families per constructor.
-In GHC's codebase, open TTG extension fields require wildcard catches in pattern matches
-because new constructors can be added by any pass — in practice this weakens
-exhaustiveness checking. Our closed type families avoid this:
-the kind `HasAnnotation` has exactly two inhabitants, so GHC reduces each family fully
-and there are no extension constructors requiring wildcards.
+In GHC's TTG, each constructor has an extension field (e.g. `XPat`)
+whose type is chosen per compiler pass via an open type family.
+When a constructor is unused in a given pass, its extension type
+is set to `DataConCantHappen` and handled via `dataConCantHappen`
+(analogous to `absurd` for `Void`) — this is sound but adds boilerplate
+to every pattern match.
+Our approach is simpler because the kind `HasAnnotation` has exactly
+two inhabitants, so GHC reduces each closed family fully at every use site.
+There are no extension constructors to handle at all —
+existing code that matches on `GenericPackageDescription` (the `HasNoAnn` alias)
+sees the same types as before, with no additional cases.
 Furthermore, because the families are composable, each field declares exactly
 the metadata it needs by nesting them — there is no per-constructor extension point
 to maintain.
@@ -523,8 +529,9 @@ Several approaches to lossless parsing were discussed in [#11227](https://github
 
 + **GHC Exact Print Annotations** (raised by @Bodigrim): GHC attaches trivia to AST nodes via extension fields.
   Our approach is similar in spirit but simpler: GHC's syntax is much larger
-  and uses open type families (Trees That Grow) which cause exhaustiveness issues.
-  Our composable closed type families avoid this.
+  and uses open type families (Trees That Grow) with per-constructor extension points
+  that require `DataConCantHappen` handling in every pattern match.
+  Our composable closed type families eliminate this boilerplate entirely.
 
 + **cabal-fields / Field-level manipulation** (raised by @mpickering referencing cabal-add):
   working at the `Field` level avoids touching GPD but means the programmer constructs
