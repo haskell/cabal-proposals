@@ -902,12 +902,6 @@ for the fields wired up so far.
 CF: https://github.com/haskell/cabal/issues/11227#issuecomment-3901663867
 Feedback on the `ExactDoc` design is welcome.
 
-List element positions are currently local to the field (relative to the field line),
-not file-absolute. A "local exact print" that gets offset-adjusted to file coordinates
-is planned but not yet implemented.
-
-Section arguments (e.g. `executable foo`) are not yet exactly positioned.
-
 We're not sure how to deal with trailing white space on empty lines?
 The lexer appears to drop them.
 
