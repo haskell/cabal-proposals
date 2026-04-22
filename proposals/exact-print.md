@@ -617,7 +617,7 @@ The key laws are:
 + `Nest` distributes over `Concat` and `StickyConcat`
   but does **not** override `Place`:
 
-```hs
+```haskell
 nest indent (place row col doc) = place row col doc
 ```
 
