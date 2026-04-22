@@ -686,14 +686,14 @@ if it could store whitespace it could potentially be used for exact printing.
 `InstalledPackageInfo`, `ProjectConfig` and `GenericPackageDescription`.
 
 We chose to annotate GPD rather than work at the `Field` level for these reasons:
-1. **Type safety for modifications.** `Field` is essentially `[(FieldName, [FieldLine])]`.
+1. Type safety for modifications. `Field` is essentially `[(FieldName, [FieldLine])]`.
    To add a dependency you would have to construct raw field lines with correct syntax.
    With annotated GPD you manipulate typed Haskell values
    (`DependencyWith`, `LibraryWith`, etc.) and the printer handles syntax.
-2. **Validation is built in.** GPD carries semantic structure (conditionals, component boundaries)
+2. Validation is built in. GPD carries semantic structure (conditionals, component boundaries)
    that `Field` does not. Modifications at the GPD level are checked by the type system;
    modifications at the `Field` level can produce syntactically valid but semantically broken files.
-3. **The field grammar already bridges both worlds.** The `FieldGrammar` type class
+3. The field grammar already bridges both worlds. The `FieldGrammar` type class
    defines how to parse `Field` into GPD and how to pretty-print GPD back to `PrettyField`
    (which is similar to `Field`). By adding `HasAnn` instances to `FieldGrammar`
    we get annotation-aware parsing and printing without duplicating the grammar.
@@ -746,15 +746,19 @@ In practice `PatternSynonyms` is not powerful enough for full backwards compatib
 
 #### Migration path
 
+Cabal code will remain mostly backward compatible,
+but will need to introduce breakage if it wants to use exact print features.
+This can be done in stages.
+
 For downstream code that uses `GenericPackageDescription`:
-1. **Code that only reads fields** (e.g. `depPkgName`, `depVerRange`): no change needed.
+1. Code that only reads fields (e.g. `depPkgName`, `depVerRange`): no change needed.
    The accessor functions operate on the `HasNoAnn` type alias which has the same field types.
-2. **Code that pattern-matches on GPD fields** (e.g. `cabal check`):
+2. Code that pattern-matches on GPD fields (e.g. `cabal check`):
    if it matches on the type alias `GenericPackageDescription`, no change is needed.
-3. **Code that constructs or updates GPD records**:
+3. Code that constructs or updates GPD records:
    if it constructs a `GenericPackageDescription` value directly,
    the record fields are the same types and no change is needed.
-4. **Custom `Setup.hs` files** that import and manipulate GPD internals
+4. Custom `Setup.hs` files that import and manipulate GPD internals
    (e.g. `gtk2hs`, `gi-gtk`) may need adjustment if they are polymorphic
    over the GPD parameter or directly import `GenericPackageDescriptionWith`.
    The expected fix is small: either pin to the `HasNoAnn` alias
@@ -766,29 +770,17 @@ as only code that touches GPD internals directly is affected.
 #### Testing compatibility
 
 To get an idea of how much breakage these changes introduce we tested
-the two packages identified as most likely to be affected:
+the two packages identified as most likely to be affected by building against the prototype branch on 2026.04.22:
 
-1. **haskell-gi** (`Data.GI.CodeGen.CabalHooks`):
-   This is the most relevant test case — it directly accesses `GenericPackageDescription`
-   fields in its `confHook`: it reads `condLibrary`, extracts `condTreeData`,
-   updates `exposedModules`, `libBuildInfo`, and `autogenModules`, then writes back
-   `condLibrary` via record update.
-   **Result: compiles unchanged against the `gpd-barbie` branch.**
-   All field types reduce to their original types under `HasNoAnn`:
-   `condLibrary :: Maybe (CondTree ConfVar (LibraryWith HasNoAnn))` = `Maybe (CondTree ConfVar Library)`.
+1. haskell-gi (`Data.GI.CodeGen.CabalHooks`):
+   Uses open imports so fully backward compatible.
 
-2. **gtk2hs** (`Gtk2HsSetup`):
-   Despite being identified as a potential concern, gtk2hs only uses the resolved
-   `PackageDescription` (via `Distribution.PackageDescription`), not `GenericPackageDescription`.
-   It never touches `condLibrary` or any GPD-specific fields.
-   **Result: compiles unchanged** — `PackageDescription` is not parameterised at all.
+2. gtk2hs (`Gtk2HsSetup`):
+   Breakage due to explicit imports of records such as `Library(..)`, which are now type aliases.
 
-These results confirm that the barbies parameterisation is backwards compatible
+These preliminary results confirm that the barbies parameterisation is mostly backwards compatible
 for code that works with the `GenericPackageDescription` type alias (i.e. `HasNoAnn`).
 The only breaking change is the common stanza merging (which is a separate, deliberate change).
-
-For broader ecosystem testing, a `head.hackage`-style approach
-or testing against `clc-stackage` could be done before merging.
 
 ## Interested parties
 
@@ -816,21 +808,16 @@ and adding modules to `exposed-modules`/`other-modules`
 However, several more fine-grained operations remain open
 that are difficult to implement at the `Field` level:
 
-+ **Module rename** ([#4861](https://github.com/haskell/haskell-language-server/pull/4861), draft):
++ Module rename ([#4861](https://github.com/haskell/haskell-language-server/pull/4861), draft):
   renaming a module requires updating the `.cabal` file, the Haskell module header,
   and all import sites simultaneously.
   At the `Field` level this means string-matching module names inside raw field lines;
   with annotated GPD the tool would traverse typed `ModuleName` values
   in `exposedModules`, `otherModules`, etc.
-+ **Auto-detect new modules** ([#3595](https://github.com/haskell/haskell-language-server/issues/3595), open):
++ Auto-detect new modules ([#3595](https://github.com/haskell/haskell-language-server/issues/3595), open):
   automatically adding modules that GHC detects as missing.
   With annotated GPD, the tool manipulates a typed list rather than
   splicing text into a field line while preserving comma style.
-+ **Multiple package suggestions** ([#4360 TODO](https://github.com/haskell/haskell-language-server/pull/4360)):
-  when a module could come from several packages,
-  only one suggestion is currently offered.
-  With GPD-level access, HLS could inspect existing dependencies
-  to rank suggestions more accurately.
 
 A cabal-library-based exact printer would let HLS perform these edits
 through the cabal library directly, gaining stability guarantees
@@ -852,11 +839,12 @@ The packages most likely to be affected are those with custom `Setup.hs` files
 that directly pattern-match on or construct `GenericPackageDescription` internals.
 Known examples include:
 + `gtk2hs` and `gi-gtk` — their custom `Setup.hs` manipulates GPD internals.
+   + testing showed that `gtk2hs` is breaking on imports.
+   + `gi-gtk` currently looks fine.
 + Any package with a custom `Setup.hs` that imports `Distribution.Types.GenericPackageDescription`
   and pattern-matches on its fields.
 
-We intend to identify and test these packages before the proposal is merged.
-We could also make a post on discourse to ask if anyone else is affected.
+
 
 ## Implementation Notes
 
@@ -866,7 +854,12 @@ Timeline: around 4 months of development, excluding review time.
 The implementation is split across multiple PRs:
 + Comment parsing: https://github.com/haskell/cabal/pull/11252
 + Common stanzas: https://github.com/haskell/cabal/pull/11277
-+ GPD barbie parameterisation (current work): https://github.com/leana8959/cabal/tree/gpd-barbie
++ GPD ~~barbie parameterisation~~ trees that grow (current work): https://github.com/leana8959/cabal/tree/gpd-barbie
+
+I think if we want to use exact positions in the rest of cabal 
+a transition plan has to be made because at every introduction
+of annotations compile errors occur.
+New code at least will be able to use it immediately.
 
 ### Maintainer impact
 
