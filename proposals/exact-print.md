@@ -39,9 +39,9 @@ For example:
 + [gild](https://taylor.fausak.me/2024/02/17/gild/)
 
 Of course many of these projects do more than just module expansion.
-hpack provides a completely different cabal file layout for example,
+`hpack` provides a completely different cabal file layout for example,
 `cabal-fmt` and `gild` are formatters for cabal files.
-Only auto-pack just does this one feature.
+Only `autopack` automatically adds modules.
 However, since all these programs implement this functionality
 in their own distinct way,
 there is clearly demand for it.
@@ -110,8 +110,9 @@ main = do
         error $ "failed parsing " <> show someFailure
       Right generic ->
         let
+          -- The `mapTopLevelCondData` is a helper function (that doesn't yet exist).
           depends = mkDependency dependName anyVersion (NES.singleton LMainLibName)
-          modified = generic { condLibrary = fmap addDep (condLibrary generic) }
+          modified = generic { condLibrary = mapTopLevelCondData addDep (condLibrary generic) }
           addDep tree = tree { condTreeData = addDepToLib (condTreeData tree) }
           addDepToLib lib = lib { libBuildInfo = addDepToBI (libBuildInfo lib) }
           addDepToBI bi = bi { targetBuildDepends = depends : targetBuildDepends bi }
@@ -155,10 +156,15 @@ the exact printer handles all formatting and position bookkeeping.
 
 ## Proposed Change
 
-This proposal want's to add a function to the cabal library:
+This proposal wants to add a new phase in the parse/print pipeline with the trees-that-grow approach, inspired by ghc-exactprint.
 
+Currently, the input `ByteString` is parsed into `GenericPackageDescription`, and then printed back out.
+This proposal adds a new phase between `ByteString` and `GenericPackageDescription`, named `GenericPackageDescriptionAnn`.
+This new data type is a concrete syntax tree, deferring the removal of concrete syntax information
+and allow the roundtrip to take place using the following function.
+We can then add a new function `printExact`.
 ```haskell
-printExact :: GenericPackageDescription -> Text
+printExact :: GenericPackageDescriptionAnn -> Text
 ```
 
 Which will do exact printing.
@@ -166,7 +172,7 @@ This function has the following properties:
 
 Byte-for-byte roundtrip of all Hackage packages:
 ```haskell
-  forall (hackagePackage :: ByteString) . (printExact <$> parseGeneric hackagePackage) == Right hackagePackage
+  forall (hackagePackage :: ByteString) . (printExact <$> parseGenericPackageDescriptionAnn hackagePackage) == Right hackagePackage
 ```
 
 The byte-for-byte roundtrip property holds where `hackagePackage` is a cabal package found on Hackage.
@@ -177,13 +183,14 @@ is stored in a separate side-table keyed by a path into the GPD structure — wo
 + Figuring out why something is missing from the trivia tree is hard.
 + The trivia tree creates large golden tests which are hard to read.
 + Monoidal fields would work more easily because we no longer have to figure out which field was used to recreate provenance.
+   + Most time in implementing trivia tree was spend on trying to make it work on monoidal fields, it worked for 90% but was very hard to do.
 
 We therefore developed the in-tree annotated (barbies) approach described below,
 which is now the primary design.
 The namespace approach is kept here for historical context.
 
 ### Namespace approach (explored earlier under the TWG (Technical Working Group) proposal)
-To support exact printing a new type can wrap `GenericPackageDescription`, called `AnnotedGpd`:
+To support exact printing a new type can wrap `GenericPackageDescription`, called `AnnotatedGpd`:
 
 ```haskell
 data AnnotatedGpd {
@@ -204,6 +211,7 @@ Implementation example is here: https://github.com/haskell/cabal/pull/11252/chan
 
 If we store comments like this it would be easy to add multiline comments as well,
 because now we don't have to intercalate everything with comments.
+We may come back to this design and also put the comments within field grammar if it turns out to be hard to preserve comment position under annotation.
 
 ### In-tree annotated (barbies)
 This is the latest design which is quite different from the original
@@ -216,6 +224,7 @@ while keeping the existing API backwards compatible.
 Inspired by the [barbies](https://hackage.haskell.org/package/barbies)
 package, we parameterise the data types with a phantom type-level tag
 and use type families to conditionally include or exclude annotations.
+This is similar to the [trees that grow](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/trees-that-grow.pdf) paper.
 
 #### Core type machinery
 
@@ -362,35 +371,14 @@ Furthermore:
 
 #### Relationship to Trees That Grow
 
-This approach is closely related to [Trees That Grow](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/trees-that-grow.pdf) (TTG),
-although GPD is not an AST.
-We call it the "barbies approach" because the parameterisation pattern
-(a type parameterised by a tag that selects between representations)
-is inspired by the [barbies](https://hackage.haskell.org/package/barbies) library's
-Higher-Kinded Data pattern, but the mechanism is indeed the same idea as TTG.
-The key difference from GHC's use of TTG is that we use multiple small composable
-closed type families (`AnnotateWith`, `AttachWith`, `PreserveGrouping`)
-rather than open extension families per constructor.
-In GHC's TTG, each constructor has an extension field (e.g. `XPat`)
-whose type is chosen per compiler pass via an open type family.
-When a constructor is unused in a given pass, its extension type
-is set to `DataConCantHappen` and handled via `dataConCantHappen`
-(analogous to `absurd` for `Void`) — this is sound but adds boilerplate
-to every pattern match.
-Our approach is simpler because the kind `HasAnnotation` has exactly
-two inhabitants, so GHC reduces each closed family fully at every use site.
-There are no extension constructors to handle at all —
-existing code that matches on `GenericPackageDescription` (the `HasNoAnn` alias)
-sees the same types as before, with no additional cases.
-Furthermore, because the families are composable, each field declares exactly
-the metadata it needs by nesting them — there is no per-constructor extension point
-to maintain.
+This approach is similar to [Trees That Grow](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/trees-that-grow.pdf).
 
 Concretely, for code that pattern-matches on GPD (such as `cabal check`):
 + When matching on `GenericPackageDescription` (i.e. `HasNoAnn`), all fields reduce to their current types.
   No code that only works with the non-annotated variant needs to change.
 + When matching on `GenericPackageDescriptionAnn` (i.e. `HasAnn`), the programmer additionally sees
   `Ann` wrappers and position tuples that they can inspect or ignore via `unAnn`.
+  Introducing this would cause compile errors.
 + The compiler still catches non-exhaustive patterns because the type families reduce fully;
   there are no extension constructors to add a wildcard for.
 
