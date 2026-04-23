@@ -820,9 +820,6 @@ that are difficult to implement at the `Field` level:
   splicing text into a field line while preserving comma style.
 
 Apparently cabal add supports this but the HLS plumbing isn't in place.
-However it doesn't deal with comments well, (see note on [fancyAddAlgorithm](https://hackage-content.haskell.org/package/cabal-add-0.2/docs/src/Distribution.Client.Add.html#fancyAddAlgorithm)).
-Even if it were implemented in HLS there will be bug reports which
-can't be solved without this work.
 A cabal-library-based exact printer would let HLS perform these edits
 through the cabal library directly, gaining stability guarantees
 and eliminating the need for `cabal-add` to independently track
