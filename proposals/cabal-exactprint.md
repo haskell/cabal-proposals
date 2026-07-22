@@ -15,14 +15,14 @@ We propose to leverage the existing `Field ann` data type, as well as the `Parse
 Cabal Exactprint.
 
 As a preliminary task, we modify the cabal lexer and field parser's definition to retain comments.
-Currently Cabal doesn't store any of the comments. This is already implemented in [https://github.com/haskell/cabal/pull/11252][#11252].
+Currently Cabal doesn't store any of the comments. This is already implemented in [#11252](https://github.com/haskell/cabal/pull/11252).
 
 Firstly, we implement exact printing `[Field ann]`. That is, `exactRenderFields . readFields = id` should hold.
 This method is chosen for its flexibility. As long as we respect the invariants of `[Field ann]` during modification,
 unchanged parts in the output should stay the same, and changed parts should be local.
 
 Secondly, we implement a modification/addition/removal framework to facilitate building modification functions.
-A notable feature request in [https://github.com/haskell/cabal/issues/7544](Exact-printer Mega-issue #7544) is about being able to programmatically modify cabal files.
+A notable feature request in [Exact-printer Mega-issue #7544](https://github.com/haskell/cabal/issues/7544) is about being able to programmatically modify cabal files.
 With this mechanism, we expose a typed way to modify cabal files that only changes the part that has been touched.
 Unmodified parts of the file stayes the same thanks to exaprint.
 
@@ -301,7 +301,7 @@ Because we don't touch the field grammar infrastructure at all, we don't forsee 
 
 <!-- Who are the interested parties in the broader Haskell community? Have you contacted them? -->
 
-As outlined in [https://github.com/haskell/cabal/issues/7544](Exact-printer Mega-issue #7544),
+As outlined in [Exact-printer Mega-issue #7544](https://github.com/haskell/cabal/issues/7544),
 this would benefit the functionality of Cabal itself many ways, namely the following:
 
 - New command `cabal add` that adds a dependency automatically by editing the cabal file.
