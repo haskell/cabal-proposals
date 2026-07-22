@@ -320,7 +320,7 @@ this would benefit the functionality of Cabal itself many ways, namely the follo
 Under Jappie and the Haskell Foundation's funding since september 2025, I have tried to implement and iterate the previous proposal.
 Due to the design evoving drastically over time, this is the most up-to-date proposal describing our ideas after refinding them after a year.
 
-I will conditinue to work on this personally.
+I will conditinue to work on this myself under the funding of Jappie and Haskell Foundation.
 
 ## Open Questions
 
