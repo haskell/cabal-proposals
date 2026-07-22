@@ -322,13 +322,14 @@ Users of cabal, cabal-add, etc.
 
 ## Open Questions
 
-<!-- Are there any unresolved questions or areas needing further input? -->
-
-Desired API.
+We are still investigating if describing it is possible or beneficial to describe the modification API in terms of lens.
 
 ## References
 
-<!-- Links to related issues, discussions, or previous work. -->
+<!--
+  Links to related issues, discussions, or previous work.
+  Read them, describe how they compare to this approach.
+-->
 
 Link to
 - cabal-add
