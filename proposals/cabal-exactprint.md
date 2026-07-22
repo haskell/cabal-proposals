@@ -15,7 +15,7 @@ We propose to leverage the existing `Field ann` data type, as well as the `Parse
 Cabal Exactprint.
 
 As a preliminary task, we modify the cabal lexer and field parser's definition to retain comments.
-Currently Cabal doesn't store any of the comments. This is already implemented in [#11252](https://github.com/haskell/cabal/pull/11252).
+Currently Cabal doesn't store any of the comments. This is already implemented in [#11252](https://github.com/haskell/cabal/pull/11252) which is yet to be merged.
 
 Firstly, we implement exact printing `[Field ann]`. That is, `exactRenderFields . readFields = id` should hold.
 This method is chosen for its flexibility. As long as we respect the invariants of `[Field ann]` during modification,
