@@ -24,7 +24,7 @@ unchanged parts in the output should stay the same, and changed parts should be 
 Secondly, we implement a modification/addition/removal framework to facilitate building modification functions.
 A notable feature request in [Exact-printer Mega-issue #7544](https://github.com/haskell/cabal/issues/7544) is about being able to programmatically modify cabal files.
 With this mechanism, we expose a typed way to modify cabal files that only changes the part that has been touched.
-Unmodified parts of the file stayes the same thanks to exaprint.
+Unmodified parts of the file stayes the same thanks to exactprint.
 
 We will use the `Parsec` and `Pretty` to implement the typed modification framework.
 Each field in a Cabal file is represented by a field name in association with some field lines.
@@ -43,7 +43,7 @@ Upon modification, we proceed with the following steps:
   - If a field `f` is pulled up due to removal before `f`, we can either do nothing (leaving empty lines before `f`) or decrement the line numbers of `f` and its following siblings accordingly.
   - Modification is be a hybrid of addition and removal.
 
-Exactprint and the modification framework can be implemented independently.
+Exactprint and the modification framework can be implemented and tested independently.
 
 To validate an exactprint implementation, we test the property `exactRenderFields . readFields = id` against Hackage;
 to validate a modification framework implementation, we add golden tests for different cases to ensure that important invariants are preserved,
@@ -52,8 +52,7 @@ namely that `Position` of fields are not overlapping.
 We want to let user describe a single modification that we call `Edit` by specifying a focus and a transformation.
 Here we add a new dependency `myNewDep` as an example.
 This modification can be expressed in plain English as "within the section library with no arguments [^1], within the field `build-depends`, add (append) a `myNewDep."
-
-In pseudo Haskell of the API we intend to build:
+In pseudo Haskell of the API we intend to build the aforementioned example modification can be described as:
 ```haskell
 appendDependency :: Edit
 appendDependency =
@@ -77,6 +76,9 @@ addFieldLinesListLike :: forall t. (Parsec t, Pretty t) => t -> ([FieldLine Posi
 Interpreting all the foci of a `Edit` tree describes a set of matching paths down the tree of fields.
 At the leaf (in the above example, `AddField`) we help user build a function that modifies `[FieldLine Position]`
 by providing `addFieldLinesListLike`.
+
+We strive to make the API flexible and will expose ways to modify `[Field Position]` directly, and validate/fixup the coordinates after changes.
+However we don't try to guarantee that this will always be correct.
 
 ## Alternatives Considered
 
@@ -338,6 +340,5 @@ Link to
 
 - my four attempts
 
-[^1]:
-  In cabal, sections can have arguments. If-else conditions are actually sections where the condition is the single argument,
+[^1]: In cabal, sections can have arguments. If-else conditions are actually sections where the condition is the single argument,
   and `library` is a section that can take a library name as a section argument.
