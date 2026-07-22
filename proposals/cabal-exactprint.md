@@ -11,7 +11,7 @@ blah blah
 
 ## Proposed Change
 
-We propose to leverage the existing `Field ann` data type, as well as the `Parsec` and `Pretty` instances to implement
+We propose to leverage the existing `Field ann` data type, as well as the `Parsec` and `Pretty` classes and their instances to implement
 Cabal Exactprint.
 
 Before starting, we modify the cabal lexer and field parser's definition to retain comments.
@@ -49,7 +49,32 @@ Do we use TTG for nested types ?
 I don't think so, but if we want to be perfectionist it can be cosidered.
 -->
 
-<!-- Describe current API -->
+We want to allow the user to describe a single modification (here-below named `Edit`) by specifying a focus and a transformation.
+Here we add a new dependency `myNewDep` as an example.
+This can be described as "within the section library with no arguments [^1], within the field `build-depends`, add (append) a `myNewDep."
+
+In pseudo Haskell of the API we intend to build:
+```haskell
+addDependency :: Edit
+addDependency =
+  ModifySection
+    -- focus on a section
+    (hasSectionName "library" <> hasSectionArgument [])
+    -- don't transform the section name nor arguments
+    id
+    -- transform nested fields or sections
+    $ AddField
+        -- focus on a field, creat it should it not exist
+        (hasFieldName "build-depends")
+        -- inject a new dependency into the list of dependencies
+        (addFieldLinesListLike @Dependency myNewDep)
+
+addFieldLinesListLike :: forall t. (Parsec t, Pretty t) => t -> ([FieldLine Position] -> [FieldLine Position])
+```
+
+Interpreting all the foci of a `Edit` tree describes a set of paths down the tree of fields.
+At the leaf (in the above example, `AddField`) we help user build a function that modifies `[FieldLine Position]`
+by providing `addFieldLinesListLike`.
 
 ## Alternatives Considered
 
