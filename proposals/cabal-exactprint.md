@@ -80,7 +80,7 @@ by providing `addFieldLinesListLike`.
 
 ## Alternatives Considered
 
-Here's an exhaustive list of the changes we tried in chronological order.
+Below is an exhaustive list of the changes we tried in chronological order since september 2025 and what I learned from these attempts.
 
 - "Defer merging of common stanza" [#11277](https://github.com/haskell/cabal/pull/11277)
 
@@ -90,7 +90,7 @@ Here's an exhaustive list of the changes we tried in chronological order.
   We store unmerged section data within `GenericPackageDescription` while exposing
   accessors that merge the imports upon access.
 
-  This will be necessary if we choose to implement cabal-exactprint using field grammar and is not a 
+  This will be necessary if we choose to implement cabal-exactprint using field grammar and is not a
   exactprint implementation.
 
 - "Trivia-tree" [#11425 (proof of concept)](https://github.com/haskell/cabal/pull/11425) implements a untyped tree `TriviaTree` using existential type.
@@ -102,14 +102,14 @@ Here's an exhaustive list of the changes we tried in chronological order.
 - "Barbie/Trees-that-grow" [#11690 (proof of concept)](https://github.com/haskell/cabal/pull/11690) tries to do the same thing as Trivia-tree in a typed way.
 
   We draw inspiration from ghc-exactprint and its trees that grow model, annotating data structurally on each extension point.
-  Reaching the end of the design space of this approach (with just enough fields implemented to make two cabal files Hackage roundtrip 100%),
-  inherent problems of using `GenericPackageDescription` to solve this problem started to catch my eyes.
+  Reaching the end of the design space of this approach with just enough fields implemented to make two cabal files Hackage roundtrip 100%,
+  inherent problems of using `GenericPackageDescription` as CST to implement exactprint started to catch my eyes.
   This is the first successful approach where syntactic roundtrip property of `Pretty`/`Parsec` are preserved with composition.
   The details of the inherent problems will be mentioned later in details.
 
 From then, I started experimenting using `[Field Position]` as the CST to implement cabal-exactprint.
 
-- "typed-fields" [leana8959/cabal/typed-fields](https://github.com/haskell/cabal/pull/11690) was the first attempt in this family.
+- "typed-fields" [leana8959/cabal/typed-fields](https://github.com/haskell/cabal/pull/11690).
 
   Rereading the original [cabal-exactprint meta thread](https://github.com/haskell/cabal/issues/7544), I realized that a big part of the
   demand was to modify `[Field Position]` in a typed way which doesn't necessarily need GPD.
@@ -122,16 +122,6 @@ From then, I started experimenting using `[Field Position]` as the CST to implem
   However, this resulted in the `FieldLine` bearing a too specific type for the field grammar and casting will be necessary,
   rendering the specific type information of each field useless for later parsing.
   It can only be a exactprint implementation and won't benefit other parts of Cabal-syntax.
-
-- "transform-fields" [leana8959/cabal/transform-fields](https://github.com/leana8959/cabal/tree/transform-fields) is the most recent attempt.
-
-  Bypassing field grammar, I want to achieve in-place modification leveraging the existing `Parsec` and `Pretty` instance.
-  I want to allow easy typed modification to `[Field Position]` while maintaining its invariants,
-  which leaves us with printing `[Field Position]` faithfully.
-
-
-<!-- NOTE: the rest is the original trivia tree rant article -->
-
 
 ### "Trivia-Tree"
 
@@ -305,20 +295,30 @@ support.
 
 ## Backwards Compatibility / Migration
 
-<!-- Does this change affect backwards compatibility? What migration path is needed? -->
-
-<!-- Do we use TTG for nested types? -->
+Because we don't touch the field grammar infrastructure at all, we don't forsee any backwards-compatibility issues.
 
 ## Interested parties
 
 <!-- Who are the interested parties in the broader Haskell community? Have you contacted them? -->
 
-Users of cabal, cabal-add, etc.
+As outlined in [https://github.com/haskell/cabal/issues/7544](Exact-printer Mega-issue #7544),
+this would benefit the functionality of Cabal itself many ways, namely the following:
+
+- New command `cabal add` that adds a dependency automatically by editing the cabal file.
+- `cabal gen-bounds` can modify the bounds of a cabal file.
+- `cabal format` can format a cabal file in a canonical way while preserving comments.
+<!-- TODO: confirm this -->
+- `cabal init` can leverage the "addition" part of the modification framework and generate cabal files easily.
 
 ## Implementation Notes
 
 <!-- Are you willing to implement this yourself? What is the expected timeline? -->
 
+[Jappie](https://jappie.me)'s previous proposal has been accepted and funded by the Haskell Foundation.
+Under Jappie and the Haskell Foundation's funding since september 2025, I have tried to implement and iterate the previous proposal.
+Due to the design evoving drastically over time, this is the most up-to-date proposal describing our ideas after refinding them after a year.
+
+I will conditinue to work on this personally.
 
 ## Open Questions
 
