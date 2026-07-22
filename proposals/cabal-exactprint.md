@@ -84,17 +84,6 @@ However we don't try to guarantee that this will always be correct.
 
 Below is an exhaustive list of the changes we tried in chronological order since september 2025 and what I learned from these attempts.
 
-- "Defer merging of common stanza" [#11277](https://github.com/haskell/cabal/pull/11277)
-
-  During the parsing of a section, Cabal walks through all the import fields and merges them with the remaining section fields that aren't imports.
-  This is why the `cabal format` command prints out a Cabal file where all common stanza are inlined.
-
-  We store unmerged section data within `GenericPackageDescription` while exposing
-  accessors that merge the imports upon access.
-
-  This will be necessary if we choose to implement cabal-exactprint using field grammar and is not a
-  exactprint implementation.
-
 - "Trivia-tree" [#11425 (proof of concept)](https://github.com/haskell/cabal/pull/11425) implements a untyped tree `TriviaTree` using existential type.
   With it, we can imtate the shape of a recursive type `τ` freely and construct the same shape but with annotation as nodes.
   Constructing and destructing `τ` guides us to store/read annotations accordingly.
