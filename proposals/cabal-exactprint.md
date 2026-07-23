@@ -17,31 +17,35 @@ Cabal Exactprint.
 As a preliminary task, we modify the cabal lexer and field parser's definition to retain comments.
 Currently Cabal doesn't store any of the comments. This is already implemented in [#11252](https://github.com/haskell/cabal/pull/11252) which is yet to be merged.
 
-Firstly, we implement exact printing `[Field ann]`. That is, `exactRenderFields . readFields = id` should hold.
-This method is chosen for its flexibility. As long as we respect the invariants of `[Field ann]` during modification,
-unchanged parts in the output should stay the same, and changed parts should be local.
+Firstly, we implement exact printing from `[Field ann]`. That is, `exactRenderFields . readFields = id` should hold, serving `[Field ann]` as the concrete syntax tree (CST).
+We chose it as the CST for its flexibility. As long as we respect its invariants during modification,
+unchanged parts in the output should stay the same, and changed parts should translate to local transformation in the output string.
+In our current prototype, we are already able to roundtrip 119662 out of 194557 cabal files of hackage (~60%) with an implementation that is concise and simple.
+To increase the percentage of successful roundtrip, we need to detect CRLF/LF and exactprint accordingly; furthermore, we can't figure out whether a whitespace was a tab or a space.
+These will require changes to the lexer which we have previously done in [#11252](https://github.com/haskell/cabal/pull/11252).
 
 Secondly, we implement a modification/addition/removal framework to facilitate building modification functions.
 A notable feature request in [Exact-printer Mega-issue #7544](https://github.com/haskell/cabal/issues/7544) is about being able to programmatically modify cabal files.
-With this mechanism, we expose a typed way to modify cabal files that only changes the part that has been touched.
-Unmodified parts of the file stayes the same thanks to exactprint.
+With this mechanism, we expose a typed way to modify cabal files. For example, translating an endomorphism over `Version` to an endomorphism over `[FieldLines ann]`,
+which allows the user to modify the `cabal-version` field while having all the position validation already dealt with behind the scenes.
 
-We will use the `Parsec` and `Pretty` to implement the typed modification framework.
+We will use the `Parsec` and `Pretty` classes to implement the typed modification framework.
 Each field in a Cabal file is represented by a field name in association with some field lines.
 Upon modification, we proceed with the following steps:
+
 - Should the field lines be non empty, join them into a single field line `fl` with indentation and newlines.
 - Run the `Parsec` instance of a desired type `τ` on the joined field lines `fl`, obtain data `p` which these field lines represent.
 - Apply user's transformation function `t` on `p`, obtaining `p'`.
 - Run the `Pretty` instance of `τ` on `p'` to obtain a new textual representation `fl'`.
 - - Should the field be multiple (e.g. `build-depends` or `license-files`),
      For each item `it`, we swap out the old textual represent with the new one, using the location of `it` provided by the parser.
-     This solves the problem of in-field trivia, such as comma placement and redundant parenthesis in `build-depends`.\
+     This solves the problem of in-field trivia, such as comma placement and redundant parenthesis in `build-depends`.
   - Otherwise, we replace the entire string.
-- Run modifications similar to this until no more is needed.
 - Traverse all fields that has been modified to correct lines that have been moved.
   - If a field `f` is pushed below due to addition before `f`, we increment the line numbers of `f` and its following siblings accordingly.
   - If a field `f` is pulled up due to removal before `f`, we can either do nothing (leaving empty lines before `f`) or decrement the line numbers of `f` and its following siblings accordingly.
   - Modification is be a hybrid of addition and removal.
+- Run modifications similar to this until no more is needed.
 
 Exactprint and the modification framework can be implemented and tested independently.
 
@@ -53,6 +57,7 @@ We want to let user describe a single modification that we call `Edit` by specif
 Here we add a new dependency `myNewDep` as an example.
 This modification can be expressed in plain English as "within the section library with no arguments [^1], within the field `build-depends`, add (append) a `myNewDep."
 In pseudo Haskell of the API we intend to build the aforementioned example modification can be described as:
+
 ```haskell
 appendDependency :: Edit
 appendDependency =
@@ -73,18 +78,18 @@ appendDependency =
 addFieldLinesListLike :: forall t. (Parsec t, Pretty t) => t -> ([FieldLine Position] -> [FieldLine Position])
 ```
 
-Interpreting all the foci of a `Edit` tree describes a set of matching paths down the tree of fields.
+The set of all the foci of a `Edit` tree describes a set of matching paths down the tree of fields.
 At the leaf (in the above example, `AddField`) we help user build a function that modifies `[FieldLine Position]`
 by providing `addFieldLinesListLike`.
 
-We strive to make the API flexible and will expose ways to modify `[Field Position]` directly, and validate/fixup the coordinates after changes.
-However we don't try to guarantee that this will always be correct.
+We strive to make the API flexible and will expose ways to modify `[Field Position]` directly. However we don't try to guarantee that this will always be correct.
 
 ## Alternatives Considered
 
 Below is an exhaustive list of the changes we tried in chronological order since september 2025 and what I learned from these attempts.
 
 - "Trivia-tree" [#11425 (proof of concept)](https://github.com/haskell/cabal/pull/11425) implements a untyped tree `TriviaTree` using existential type.
+
   With it, we can imtate the shape of a recursive type `τ` freely and construct the same shape but with annotation as nodes.
   Constructing and destructing `τ` guides us to store/read annotations accordingly.
   This has the benefit of not duplicating all types we want to annotate, but due to its existential type nature,
@@ -107,7 +112,7 @@ From then, I started experimenting using `[Field Position]` as the CST to implem
   To allow typed modification in the fields, we extended the `Field` data type to have more constructor (the goal was one per known cabal field).
 
   This attempt proved that modifying or printing `[Field Position]` (or something isomorphic to it) is a lot easier.
-  Its structure is not lost and better reflects what was written in the Cabal file.
+  The shape of a cabal file is not lost and better reflects what was originally written.
   Also we would avoid threading everything through field grammar, which proved to be unwieldy.
 
   However, this resulted in the `FieldLine` bearing a too specific type for the field grammar and casting will be necessary,
@@ -130,7 +135,7 @@ From then, I started experimenting using `[Field Position]` as the CST to implem
 As long as the construction and the deconstruction matches up, the trivia can be successfully
 recovered.
 
-Inspired by _[Biparsers: Exact Printing for Data Synchronisation](https://dl.acm.org/doi/full/10.1145/3704910),
+Inspired by _[Biparsers: Exact Printing for Data Synchronisation](https://dl.acm.org/doi/full/10.1145/3704910)_,
 trivia tree is passed around along the data. Each parser is extended to return a pair `(p, t)`
 where `p` is the data parsed and `t` is the associated `TriviaTree`. The printer is extended to
 receive `(p, t)` to print the data `p` with its associated `TriviaTree` `t`.
@@ -151,13 +156,13 @@ During implementation there was a lot of "dumping the AST to see where I messed 
 in the construction or elimination of `TriviaTree`. The engeerning cost was too high.
 
 TriviaTree is also plagued with the `Newtype` idiom that Cabal uses liberally.
-"Ala" parser methods in field grammar are often written in a `f :: Type -> Type` context, and f is then
+"Ala" parser methods in field grammar are often written in a `f :: Type -> Type` context, and `f` is then
 instantiated to `Identity` or some other wrapper type (e.g. `SpecVersion` for `CabalSpecVersion`) to
 redirect the `Parsec`/`Pretty` instance used.
 This doesn't work well with the trivia tree model at all, which is designed to associate a data with
 its surrounding trivia. We use the data to lookup in the trivia tree.
 With newtypes, it is unsure whether we save/look up trivia with the _`pack`ed_ data or the
-_`unpack`ed_ data, and an incoherence will not be caught by the type checker but manifest as no trivia.
+_`unpack`ed_ data, and any incoherence will not be caught by the type checker but manifest as no trivia during lookup.
 To make matters worse, field grammar uses `Newtype` as type level parser/printer combinators. `List sep b a`
 is a good example. Applying this `Newtype` changes the parsec to parse zero or more `a`, using
 the `Newtype` `b`. Field grammar interacts with newtypes over the `Newtype b a` class, not knowing
@@ -168,14 +173,14 @@ In hope for more correctness while constrained to only make backwards-compatible
 
 ### "Barbie/Trees-that-grow"
 
-[Barbie](https://hackage.haskell.org/package/barbies-2.1.1.0) is a pattern that parameterize a data declaration with a higher kinded
+[Barbie](https://hackage.haskell.org/package/barbies-2.1.1.0) is a pattern that parameterizes a data declaration with a higher kinded
 type parameter (commonly `f :: Type -> Type`).
 By leveraging this type parameter, we can share the spine of the data type but have each leaf in a different context.
 
 This is somewhat what we wanted: annotating each leaf.
-As for the backwards-compatibility, we wanted to use the `TypeFamilies` extension to conditionally
+As for backwards-compatibility, we wanted to use the `TypeFamilies` extension to conditionally
 return the same type, keeping the unannotated type completely identical to existing implementation.
-Also, not using the trivia tree frees us from looking up, and `Newtype`s no longer bother us despite
+Also, not using trivia trees frees us from looking up, so `Newtype`s no longer bother us despite
 the types becoming really nasty.
 
 Here's an example of using this method to encode the `targetBuildDepends :: MonoidalFieldAla Dependency`
@@ -187,7 +192,7 @@ data ParsingPhase
   = {-| Concrete syntax tree -} Conc
   | {-| Abstract syntax tree -} Abst
 
--- Return identical type conditionally.
+-- Return identical type if not annotated.
 type family IfConc (m :: ParsingPhase) (f :: Type -> Type) (a :: Type) where
   IfConc Abst _ a = a
   IfConc Conc f a = f a
@@ -209,12 +214,10 @@ then inserted into `GenericPackageDescription`.
 To make this still work with trees that grow annotation, it requires adding a
 constraint saying that the annotated licenses still form a Monoid, making the
 already long constraint tuple even longer. See [before](https://github.com/haskell/cabal/blob/b498d6a911509e6dade136cfbeaad30ad9382b78/Cabal-syntax/src/Distribution/PackageDescription/FieldGrammar.hs#L585-L605) and [after](https://github.com/leana8959/cabal/blob/a91c3fe5d5f0f01c350cc938a8d0c8460d452031/Cabal-syntax/src/Distribution/PackageDescription/FieldGrammar.hs#L552-L590).
-The `ConstraintKind` extension is used to deduplicate that constraint from each field grammar, for
-the sanity of everybody involved.
 
 A notable problem is we lose the shape of the original `[Field Position]`.
 Components of `GenericPackageDescription` don't know the section they belong
-to, and each data don't know which `FieldLine` they were originally parsed
+to, and each data don't know which `FieldLine` of which `Field` they were originally parsed
 from.
 This was previously not known because the limitation of trivia tree didn't allow us to go this
 far.
@@ -228,7 +231,7 @@ far.
   Worse, cabal doesn't parse a simple component but a component wrapped in a conditional tree `CondTree`.
   `Library` is represented in a suboptimal way where non-conditional fields such as library name is nested within `CondTree`.
   The stop-gap solution would be to insert a `Maybe ByteString` that is the
-  original cased name into the parsed library at the top level of the `CondTree`.
+  original cased name into the parsed library only at the top level of the `CondTree`.
 
 - Regarding losing the shape of a field:
 
@@ -252,18 +255,19 @@ far.
 
   A variant such problem is the adhoc concatenation of different fields for
   backwards-compatibility.
-  `license-file` and and `license-files` are both valid fields. In fact, the both accept zero or more
+  `license-file` and and `license-files` are both valid fields. In fact, they both accept zero or more
   than one license file, and the final parse is the concatenation of the two fields.
   This requires marking from which field the data comes originated, so at printing time
   we can recover what was originally written.
 
-These problems illustrate that while it is possible to implement cabal-exactprint with `GenericPackageDescription`,
+These problems illustrate that while it is possible to implement cabal-exactprint using `GenericPackageDescription` as CST,
 it is not a good fit because it would require copying the information on all non terminals of
 `[Field Position]` to all the leaves (i.e. sections to `GenericPackageDescription` components and
 monoidal fields that will be merged to parsed `FieldLine`s).
 
 This lead to the development of a new family of attempts based on transforming the `Field Position`
 directly, without going to and from `GenericPackageDescription`.
+The latest attempt of this family is the approach described in this proposal.
 
 ### Typed-Fields
 
@@ -305,11 +309,11 @@ this would benefit the functionality of Cabal itself many ways, namely the follo
 
 <!-- Are you willing to implement this yourself? What is the expected timeline? -->
 
-[Jappie](https://jappie.me)'s previous proposal has been accepted and funded by the Haskell Foundation.
+[Jappie](https://jappie.me)'s [previous proposal](https://github.com/haskellfoundation/tech-proposals/pull/65) has been accepted and funded by the Haskell Foundation.
 Under Jappie and the Haskell Foundation's funding since september 2025, I have tried to implement and iterate the previous proposal.
 Due to the design evoving drastically over time, this is the most up-to-date proposal describing our ideas after refinding them after a year.
 
-I will conditinue to work on this myself under the funding of Jappie and Haskell Foundation.
+I will continue to work on this myself under the funding of Jappie and Haskell Foundation.
 
 ## Open Questions
 
