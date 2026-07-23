@@ -16,9 +16,9 @@ Exactprint.
 
 As a preliminary task, we modify the cabal lexer and field parser's
 definition to retain comments. Currently Cabal doesn't store any of the
-comments. This is already implemented in
-[#11252](https://github.com/haskell/cabal/pull/11252) which is yet to be
-merged.
+comments. This is already implemented in [*Retain comments in field
+parser #11252*](https://github.com/haskell/cabal/pull/11252) which is
+yet to be merged.
 
 Firstly, we implement exact printing from `[Field ann]`. That is,
 `exactRenderFields . readFields = id` should hold, serving `[Field ann]`
@@ -31,15 +31,15 @@ cabal files of hackage (\~60%) with an implementation that is concise
 and simple. To increase the percentage of successful roundtrip, we need
 to detect CRLF/LF and exactprint accordingly; furthermore, we can't
 figure out whether a whitespace was a tab or a space. These will require
-changes to the lexer which we have previously done in
-[#11252](https://github.com/haskell/cabal/pull/11252).
+changes to the lexer which we have previously done in [*Retain comments
+in field parser #11252*](https://github.com/haskell/cabal/pull/11252).
 
 Secondly, we implement a modification/addition/removal framework to
 facilitate building modification functions. A notable feature request in
-[Exact-printer Mega-issue
-#7544](https://github.com/haskell/cabal/issues/7544) is about being able
-to programmatically modify cabal files. With this mechanism, we expose a
-typed way to modify cabal files. For example, translating an
+[*Exact-printer Mega-issue
+#7544*](https://github.com/haskell/cabal/issues/7544) is about being
+able to programmatically modify cabal files. With this mechanism, we
+expose a typed way to modify cabal files. For example, translating an
 endomorphism over `Version` to an endomorphism over `[FieldLines ann]`,
 which allows the user to modify the `cabal-version` field while having
 all the position validation already dealt with behind the scenes.
@@ -60,7 +60,7 @@ proceed with the following steps:
 - Run the `Pretty` instance of `τ` on `p'` to obtain a new textual
   representation `fl'`.
 
-- - Should the field be multiple (e.g. `build-depends` or
+- - Should the field be multiple (e.g. `build-depends` or
     `license-files`), For each item `it`, we swap out the old textual
     represent with the new one, using the location of `it` provided by
     the parser. This solves the problem of in-field trivia, such as
@@ -96,7 +96,7 @@ We want to let user describe a single modification that we call `Edit`
 by specifying a focus and a transformation. Here we add a new dependency
 `myNewDep` as an example. This modification can be expressed in plain
 English as "within the section library with no arguments [^1], within
-the field `build-depends`, add (append) a \`myNewDep." In pseudo Haskell
+the field `build-depends`, add (append) a `myNewDep`." In pseudo Haskell
 of the API we intend to build the aforementioned example modification
 can be described as:
 
@@ -134,8 +134,8 @@ will always be correct.
 Below is an exhaustive list of the changes we tried in chronological
 order since september 2025 and what I learned from these attempts.
 
-- "Trivia-tree" [#11425 (proof of
-  concept)](https://github.com/haskell/cabal/pull/11425) implements a
+- [*Trivia Tree #11425 (proof of
+  concept)*](https://github.com/haskell/cabal/pull/11425) implements a
   untyped tree `TriviaTree` using existential type.
 
   With it, we can imtate the shape of a recursive type `τ` freely and
@@ -146,9 +146,10 @@ order since september 2025 and what I learned from these attempts.
   wrong and parsers/printers lose their roundtrip guarantee during
   composition.
 
-- "Barbie/Trees-that-grow" [#11690 (proof of
-  concept)](https://github.com/haskell/cabal/pull/11690) tries to do the
-  same thing as Trivia-tree in a typed way.
+- [*Barbie/Trees-that-grow #11690 (proof of
+  concept)*](https://github.com/haskell/cabal/pull/11690)
+  <https://github.com/haskell/cabal/pull/11690> tries to do the same
+  thing as Trivia-tree in a typed way.
 
   We draw inspiration from ghc-exactprint and its trees that grow model,
   annotating data structurally on each extension point. Reaching the end
@@ -163,11 +164,11 @@ order since september 2025 and what I learned from these attempts.
 From then, I started experimenting using `[Field Position]` as the CST
 to implement cabal-exactprint.
 
-- "typed-fields"
-  [leana8959/cabal/typed-fields](https://github.com/haskell/cabal/pull/11690).
+- [*typed-fields
+  leana8959/cabal/typed-fields*](https://github.com/haskell/cabal/pull/11690)
 
-  Rereading the original [cabal-exactprint meta
-  thread](https://github.com/haskell/cabal/issues/7544), I realized that
+  Rereading the original [*Exact-printer Mega-issue
+  #7544*](https://github.com/haskell/cabal/issues/7544), I realized that
   a big part of the demand was to modify `[Field Position]` in a typed
   way which doesn't necessarily need GPD. To allow typed modification in
   the fields, we extended the `Field` data type to have more constructor
@@ -204,8 +205,8 @@ of `p`'s children.
 As long as the construction and the deconstruction matches up, the
 trivia can be successfully recovered.
 
-Inspired by *[Biparsers: Exact Printing for Data
-Synchronisation](https://dl.acm.org/doi/full/10.1145/3704910)*, trivia
+Inspired by [*Biparsers: Exact Printing for Data
+Synchronisation*](https://dl.acm.org/doi/full/10.1145/3704910), trivia
 tree is passed around along the data. Each parser is extended to return
 a pair `(p, t)` where `p` is the data parsed and `t` is the associated
 `TriviaTree`. The printer is extended to receive `(p, t)` to print the
@@ -215,7 +216,7 @@ This model was appealing because it would allow us to maintain the same
 amount of fields in each constructor of a type that should support
 cabal-exactprint, supporting backwards compatibility.
 
-Trivia tree is poor in structural composition. Let's describe the
+Trivia trees are poor in structural composition. Let's describe the
 exactprint invariant as for a given `inp` and a type `τ`,
 `(print @τ . parse @τ) inp == inp`. This reads as "parsing `inp` as `τ`
 and then printing it results to the same string". Some subnodes
@@ -253,9 +254,9 @@ Barbie.
 
 ### "Barbie/Trees-that-grow"
 
-[Barbie](https://hackage.haskell.org/package/barbies-2.1.1.0) is a
-pattern that parameterizes a data declaration with a higher kinded type
-parameter (commonly `f :: Type -> Type`). By leveraging this type
+[*Barbie library*](https://hackage.haskell.org/package/barbies-2.1.1.0)
+is a pattern that parameterizes a data declaration with a higher kinded
+type parameter (commonly `f :: Type -> Type`). By leveraging this type
 parameter, we can share the spine of the data type but have each leaf in
 a different context.
 
@@ -290,8 +291,8 @@ type MonoidalFieldAla (m :: ParsingPhase) (a :: Type) =
 ```
 
 After refining the idea, it ended up being quite similar to the famous
-[trees that
-grow](https://www.cs.tufts.edu/comp/150FP/archive/simon-peyton-jones/trees-that-grow.pdf)
+[*Trees that
+Grow*](https://www.cs.tufts.edu/comp/150FP/archive/simon-peyton-jones/trees-that-grow.pdf)
 idiom used in GHC to implement ghc-exactprint.
 
 A bearable albeit major inconvenience is constraints. In the existing
@@ -402,9 +403,10 @@ forsee any backwards-compatibility issues.
 
 ## Interested parties
 
-As outlined in [Exact-printer Mega-issue
-#7544](https://github.com/haskell/cabal/issues/7544), this would benefit
-the functionality of Cabal itself many ways, namely the following:
+As outlined in [*Exact-printer Mega-issue
+#7544*](https://github.com/haskell/cabal/issues/7544), this would
+benefit the functionality of Cabal itself many ways, namely the
+following:
 
 - New command `cabal add` that adds a dependency automatically by
   editing the cabal file.
@@ -419,7 +421,7 @@ the functionality of Cabal itself many ways, namely the following:
 
 It would also benefit existing programs that depend on Cabal:
 
-- [cabal-add](https://github.com/Bodigrim/cabal-add)
+- [*cabal-add*](https://github.com/Bodigrim/cabal-add)
 
   It has three strategies to add dependencies that are tried in
   sequence. All of the strategies use parsed fields to guide stringy
@@ -428,22 +430,21 @@ It would also benefit existing programs that depend on Cabal:
   instead. Or, even better, we should be able to implement cabal-add in
   cabal directly.
 
-- [cabal-fmt](https://github.com/phadej/cabal-fmt)
+- [*cabal-fmt*](https://github.com/phadej/cabal-fmt)
 
   It parses the cabal file twice: once with `readFields` from cabal, and
   again with its own parser to find all the comments. This can be
-  simplified the new `readFieldsWithComments` in
-  [#11252](https://github.com/haskell/cabal/pull/11252).
+  simplified the new `readFieldsWithComments` in [*Retain comments in
+  field parser #11252*](https://github.com/haskell/cabal/pull/11252).
 
 ## Implementation Notes
 
-[Jappie](https://jappie.me)'s [previous
-proposal](https://github.com/haskellfoundation/tech-proposals/pull/65)
-has been accepted and funded by the Haskell Foundation. Under Jappie and
-the Haskell Foundation's funding since september 2025, I have tried to
-implement and iterate the previous proposal. Due to the design evoving
-drastically over time, this is the most up-to-date proposal describing
-our ideas after refinding them after a year.
+references.jappie-original-proposal.get-link has been accepted and
+funded by the Haskell Foundation. Under Jappie and the Haskell
+Foundation's funding since september 2025, I have tried to implement and
+iterate the previous proposal. Due to the design evoving drastically
+over time, this is the most up-to-date proposal describing our ideas
+after refinding them after a year.
 
 I will continue to work on this myself under the funding of Jappie and
 Haskell Foundation.
@@ -455,8 +456,35 @@ describe the modification API in terms of lens.
 
 ## References
 
-- [Biparsers: Exact Printing for Data
-  Synchronisation](https://dl.acm.org/doi/full/10.1145/3704910)
+- [*Retain comments in field parser
+  #11252*](https://github.com/haskell/cabal/pull/11252)
+
+- [*Exact-printer Mega-issue
+  #7544*](https://github.com/haskell/cabal/issues/7544)
+
+- [*TriviaTree #11425*](https://github.com/haskell/cabal/pull/11425)
+
+- [*Barbie/Trees-that-grow
+  #11690*](https://github.com/haskell/cabal/pull/11690)
+
+- [*typed-fields
+  leana8959/cabal/typed-fields*](https://github.com/haskell/cabal/pull/11690)
+
+- [*Biparsers: Exact Printing for Data
+  Synchronisation*](https://dl.acm.org/doi/full/10.1145/3704910)
+
+- [*Barbie
+  library*](https://hackage.haskell.org/package/barbies-2.1.1.0)
+
+- [*Trees that
+  Grow*](https://www.cs.tufts.edu/comp/150FP/archive/simon-peyton-jones/trees-that-grow.pdf)
+
+- [*cabal-add*](https://github.com/Bodigrim/cabal-add)
+
+- [*cabal-fmt*](https://github.com/phadej/cabal-fmt)
+
+- [*Jappie's original Haskell Foundation Tech
+  Proposal*](https://github.com/haskellfoundation/tech-proposals/pull/65)
 
 [^1]: In cabal, sections can have arguments. If-else conditions are
     actually sections where the condition is the single argument, and
