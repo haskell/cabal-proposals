@@ -1,3 +1,5 @@
+
+
 = Cabal Exactprint
 
 
@@ -57,7 +59,8 @@ proceed with the following steps:
 - Apply user's transformation function `t` on `p`, obtaining `p'`.
 - Run the `Pretty` instance of `τ` on `p'` to obtain a new textual
   representation `fl'`.
-- - Should the field be multiple (e.g.~`build-depends` or
+-
+  - Should the field be multiple (e.g.~`build-depends` or
     `license-files`), For each item `it`, we swap out the old textual
     represent with the new one, using the location of `it` provided by
     the parser. This solves the problem of in-field trivia, such as
