@@ -11,8 +11,8 @@ blah blah
 ## Proposed Change
 
 We propose to leverage the existing `Field ann` data type, as well as
-the `Parsec` and `Pretty` classes and their instances to implement Cabal
-Exactprint.
+the `Parsec` and `Pretty` classes and their instances to implement
+cabal-exactprint.
 
 As a preliminary task, we modify the cabal lexer and field parser's
 definition to retain comments. Currently Cabal doesn't store any of the
@@ -30,9 +30,10 @@ current prototype, we are already able to roundtrip 119662 out of 194557
 cabal files of hackage (\~60%) with an implementation that is concise
 and simple. To increase the percentage of successful roundtrip, we need
 to detect CRLF/LF and exactprint accordingly; furthermore, we can't
-figure out whether a whitespace was a tab or a space. These will require
-changes to the lexer which we have previously done in [*Retain comments
-in field parser #11252*](https://github.com/haskell/cabal/pull/11252).
+figure out whether a whitespace was a tab or a space yet. These will
+require changes to the lexer which we have previously done in [*Retain
+comments in field parser
+#11252*](https://github.com/haskell/cabal/pull/11252).
 
 Secondly, we implement a modification/addition/removal framework to
 facilitate building modification functions. A notable feature request in
@@ -63,25 +64,26 @@ proceed with the following steps:
 - - Should the field be multiple (e.g. `build-depends` or
     `license-files`), For each item `it`, we swap out the old textual
     represent with the new one, using the location of `it` provided by
-    the parser. This solves the problem of in-field trivia, such as
-    comma placement and redundant parenthesis in `build-depends`.
+    the parser. This solves the problem of in-field trivia by only
+    modifying the orignial field lines within a specific range that has
+    changed.
 
   - Otherwise, we replace the entire string.
 
 - Traverse all fields that has been modified to correct lines that have
   been moved.
 
-  - If a field `f` is pushed below due to addition before `f`, we
+  - If a field `f` is moved down due to addition before `f`, we
     increment the line numbers of `f` and its following siblings
     accordingly.
 
-  - If a field `f` is pulled up due to removal before `f`, we can either
+  - If a field `f` is moved up due to removal before `f`, we can either
     do nothing (leaving empty lines before `f`) or decrement the line
     numbers of `f` and its following siblings accordingly.
 
   - Modification is be a hybrid of addition and removal.
 
-- Run modifications similar to this until no more is needed.
+- Run modifications similar to this until no more is demanded.
 
 Exactprint and the modification framework can be implemented and tested
 independently.
@@ -147,9 +149,8 @@ order since september 2025 and what I learned from these attempts.
   composition.
 
 - [*Barbie/Trees-that-grow #11690 (proof of
-  concept)*](https://github.com/haskell/cabal/pull/11690)
-  <https://github.com/haskell/cabal/pull/11690> tries to do the same
-  thing as Trivia-tree in a typed way.
+  concept)*](https://github.com/haskell/cabal/pull/11690) tries to do
+  the same thing as Trivia-tree in a typed way.
 
   We draw inspiration from ghc-exactprint and its trees that grow model,
   annotating data structurally on each extension point. Reaching the end
@@ -164,7 +165,7 @@ order since september 2025 and what I learned from these attempts.
 From then, I started experimenting using `[Field Position]` as the CST
 to implement cabal-exactprint.
 
-- [*typed-fields
+- [*Typed-fields
   leana8959/cabal/typed-fields*](https://github.com/haskell/cabal/pull/11690)
 
   Rereading the original [*Exact-printer Mega-issue
@@ -467,7 +468,7 @@ describe the modification API in terms of lens.
 - [*Barbie/Trees-that-grow
   #11690*](https://github.com/haskell/cabal/pull/11690)
 
-- [*typed-fields
+- [*Typed-fields
   leana8959/cabal/typed-fields*](https://github.com/haskell/cabal/pull/11690)
 
 - [*Biparsers: Exact Printing for Data
