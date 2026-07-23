@@ -75,7 +75,7 @@ Furthermore it makes cabal authoritative on the cabal file format
 allowing downstream users to use the provided printing functions
 and get a stability guarantee.
 
-We define the parse-print idempotency to be `print . parse == id`, which reads "parseing then
+We define the parse-print idempotency to be `print . parse == id`, which reads "parsing then
 printing is as if we've done nothing". We only focus on ensuring this property to hold for valid
 cabal files, and we not consider the braces syntax in this work.
 
@@ -166,7 +166,7 @@ proceed with the following steps:
     `license-files`), For each item `it`, we swap out the old textual
     represent with the new one, using the location of `it` provided by
     the parser. This solves the problem of in-field trivia by only modifying
-    the orignial field lines within a specific range that has changed.
+    the original field lines within a specific range that has changed.
   - Otherwise, we replace the entire string.
 - Traverse all fields that has been modified to correct lines that have
   been moved.
@@ -494,7 +494,7 @@ fields we support.
 == Backwards Compatibility / Migration
 
 Because we don't touch the field grammar infrastructure at all, we don't
-forsee any backwards-compatibility issues.
+foresee any backwards-compatibility issues.
 
 == Interested parties
 
