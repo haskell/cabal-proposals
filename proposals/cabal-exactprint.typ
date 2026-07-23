@@ -51,7 +51,7 @@
     "https://github.com/haskell/cabal-proposals/pull/5",
   )[Jappie's original Cabal Proposal],
 
-  // TODO: read these references
+  // TODO: read these references in details
   hpack-project: mk-smartlink("https://github.com/sol/hpack")[hpack],
   autopack-project: mk-smartlink("https://github.com/kowainik/autopack")[autopack],
 )
@@ -66,7 +66,7 @@ approach.
 
 == Summary
 
-The Exact Printer project aims to develop a precise parsing and printing tool for .cabal files in the cabal library.
+The Cabal Exactprint project aims to develop a precise parsing and printing tool for .cabal files in the cabal library.
 
 This will allow both cabal and other tools to introduce deltas into cabal files through a typed API,
 simplifying the modification/addition/removal of fields, without mangling the format, structure or comments of users files.
@@ -121,13 +121,13 @@ can't:
 == Proposed Change
 
 We propose to leverage the existing `Field ann` data type, as well as
-the `Parsec` and `Pretty` classes and their instances to implement cabal-exactprint.
+the `Parsec` and `Pretty` classes and their instances to implement Cabal Exactprint.
 
 As a preliminary task, we modify the cabal lexer and field parser's
 definition to retain comments. Currently Cabal doesn't store any of the
 comments. This is already implemented in #references.comment-parser-pr.get-link which is yet to be merged.
 
-Firstly, we implement exact printing from `[Field ann]`. That is,
+Firstly, we implement exactprinting from `[Field ann]`. That is,
 `exactRenderFields . readFields = id` should hold, serving `[Field ann]`
 as the concrete syntax tree (CST). We chose it as the CST for its
 flexibility. As long as we respect its invariants during modification,
@@ -260,7 +260,7 @@ order since september 2025 and what I learned from these attempts.
   be mentioned later in details.
 
 From then, I started experimenting using `[Field Position]` as the CST
-to implement cabal-exactprint.
+to implement Cabal Exactprint.
 
 - #references.typed-fields.get-link
 
@@ -310,7 +310,7 @@ print the data `p` with its associated `TriviaTree` `t`.
 
 This model was appealing because it would allow us to maintain the same
 amount of fields in each constructor of a type that should support
-cabal-exactprint, supporting backwards compatibility.
+Cabal Exactprint, supporting backwards compatibility.
 
 Trivia trees are poor in structural composition. Let's describe the
 exactprint invariant as for a given `inp` and a type `τ`,
@@ -455,7 +455,7 @@ this far.
   written.
 
 These problems illustrate that while it is possible to implement
-cabal-exactprint using `GenericPackageDescription` as CST, it is not a
+Cabal Exactprint using `GenericPackageDescription` as CST, it is not a
 good fit because it would require copying the information on all non
 terminals of `[Field Position]` to all the leaves (i.e.~sections to
 `GenericPackageDescription` components and monoidal fields that will be
@@ -479,7 +479,7 @@ field will bear the value of the parsed type that its corresponding
 field has.
 
 This was an interesting idea, but it would be a type that is only used
-for cabal-exactprint. Field grammar finds a field by its string name.
+for Cabal Exactprint. Field grammar finds a field by its string name.
 While in `TField` we retain the original field name, the value we get
 out of it will be typed. In other words, the type of the value we get
 from a TField depends on which field name it is. This lead to opening
@@ -517,7 +517,7 @@ It would also benefit existing programs that depend on Cabal:
   It has three strategies to add dependencies that are tried in
   sequence. All of the strategies use parsed fields to guide stringy
   manipulation directly within the source file. In comparison
-  `cabal-exactprint` will allow users to manipulate `[Field ann]`
+  Cabal Exactprint will allow users to manipulate `[Field ann]`
   instead. Or, even better, we should be able to implement cabal-add in
   cabal directly.
 
