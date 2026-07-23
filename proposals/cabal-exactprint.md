@@ -1,12 +1,75 @@
 # Cabal Exactprint
 
+Note that this proposal builds on the earlier [*TWG (Technical Working
+Group)
+proposal*](https://github.com/haskellfoundation/tech-proposals/pull/65),
+also succeeds [*Jappie's original Cabal
+Proposal*](https://github.com/haskell/cabal-proposals/pull/5) to match
+the updates in our approach.
+
 ## Summary
 
-blah blah
+The Exact Printer project aims to develop a precise parsing and printing
+tool for .cabal files in the cabal library.
+
+This will allow both cabal and other tools to introduce deltas into
+cabal files through a typed API, simplifying the
+modification/addition/removal of fields, without mangling the format,
+structure or comments of users files.
+
+Furthermore it makes cabal authoritative on the cabal file format
+allowing downstream users to use the provided printing functions and get
+a stability guarantee.
+
+We define the parse-print idempotency to be `print . parse == id`, which
+reads "parseing then printing is as if we've done nothing". We only
+focus on ensuring this property to hold for valid cabal files, and we
+not consider the braces syntax in this work.
 
 ## Motivation
 
-blah blah
+Cabal reads cabal package manifests in the cabal format (with the
+extension .cabal). However, it is currently unable to modify it
+loselessly.
+
+Here are some of the symptoms of this problem manifesting in different
+ways through out the cabal CLI:
+
+- `cabal format`
+
+  It should fix the indentation of your file and canonicalize some
+  fields. Instead, it also drops all your comments, all the imports are
+  merged in-place, elif in a conditional will be desugared to a nested
+  if in an else, etc.
+
+- `cabal add`
+
+  Cabal should be able to add a dependency to a component. This can't be
+  implemented because modifying a portion of the cabal file's in-memory
+  representation mangles the entire cabal file, similar to
+  `cabal format`. drops all comments and merges imports.
+
+- Missing module declaration When a module exists but is not declared in
+  the cabal file, cabal can't add it for you. Again, because cabal would
+  mangle the cabal file if it tries to touch it. It can only tell you
+  that it's missing. Argh.
+
+- `cabal gen-bounds`
+
+  Cabal is very helpful and can generate dependency constraints
+  ("bounds") for you. However, it just dumps them in the terminal,
+  because it can't modify the cabal file.
+
+Cabal is also not authoritative in this matter, many projects have been
+created to do what cabal can't:
+
+- [*cabal-fmt*](https://github.com/phadej/cabal-fmt)
+
+- [*cabal-add*](https://github.com/Bodigrim/cabal-add)
+
+- [*hpack*](https://github.com/sol/hpack)
+
+- [*autopack*](https://github.com/kowainik/autopack)
 
 ## Proposed Change
 
@@ -440,7 +503,7 @@ It would also benefit existing programs that depend on Cabal:
 
 ## Implementation Notes
 
-references.jappie-original-proposal.get-link has been accepted and
+references.jappie-original-twg-proposal.get-link has been accepted and
 funded by the Haskell Foundation. Under Jappie and the Haskell
 Foundation's funding since september 2025, I have tried to implement and
 iterate the previous proposal. Due to the design evoving drastically
@@ -486,6 +549,13 @@ describe the modification API in terms of lens.
 
 - [*Jappie's original Haskell Foundation Tech
   Proposal*](https://github.com/haskellfoundation/tech-proposals/pull/65)
+
+- [*Jappie's original Cabal
+  Proposal*](https://github.com/haskell/cabal-proposals/pull/5)
+
+- [*hpack*](https://github.com/sol/hpack)
+
+- [*autopack*](https://github.com/kowainik/autopack)
 
 [^1]: In cabal, sections can have arguments. If-else conditions are
     actually sections where the condition is the single argument, and
