@@ -305,6 +305,19 @@ this would benefit the functionality of Cabal itself many ways, namely the follo
 <!-- TODO: confirm this -->
 - `cabal init` can leverage the "addition" part of the modification framework and generate cabal files easily.
 
+It would also benefit existing programs that depend on Cabal:
+
+- [cabal-add](https://github.com/Bodigrim/cabal-add)
+
+  It has three strategies to add dependencies that are tried in sequence.
+  All of the strategies use parsed fields to guide stringy manipulation directly within the source file.
+  In comparison `cabal-exactprint` will allow users to manipulate `[Field ann]` instead. Or, even better, we should be able to implement cabal-add in cabal directly.
+
+- [cabal-fmt](https://github.com/phadej/cabal-fmt)
+
+  It parses the cabal file twice: once with `readFields` from cabal, and again with its own parser to find all the comments.
+  This can be simplified the new `readFieldsWithComments` in [#11252](https://github.com/haskell/cabal/pull/11252).
+
 ## Implementation Notes
 
 <!-- Are you willing to implement this yourself? What is the expected timeline? -->
@@ -321,17 +334,8 @@ We are still investigating if describing it is possible or beneficial to describ
 
 ## References
 
-<!--
-  Links to related issues, discussions, or previous work.
-  Read them, describe how they compare to this approach.
--->
+- [Biparsers: Exact Printing for Data Synchronisation](https://dl.acm.org/doi/full/10.1145/3704910)
 
-Link to
-- cabal-add
-- cabal-fmt
-- cabal-gild
-
-- my four attempts
 
 [^1]: In cabal, sections can have arguments. If-else conditions are actually sections where the condition is the single argument,
   and `library` is a section that can take a library name as a section argument.
