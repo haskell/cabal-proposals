@@ -612,12 +612,17 @@ describe the modification API in terms of lens.
 - [Trees that
   Grow](https://www.cs.tufts.edu/comp/150FP/archive/simon-peyton-jones/trees-that-grow.pdf)
 
-[^1]: To run this implementation, run the following in your terminal
+[^1]: To run this implementation to see for yourself:
 
-    ``` bash
-    Cabal-tests:hackage-tests --test-option="field-roundtrip"
-      
-    ```
+    - Clone the branch at this commit
+      <https://github.com/haskell/cabal/commit/00a79443390c3a28c911c91b2d8c2f432e09c05c>
+
+    - Run the following in your terminal
+
+      ``` bash
+      Cabal-tests:hackage-tests --test-option="field-roundtrip"
+       
+      ```
 
 [^2]: In cabal, sections can have arguments. If-else conditions are
     actually sections where the condition is the single argument, and

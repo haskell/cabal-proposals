@@ -151,10 +151,13 @@ unchanged parts in the output should stay the same, and changed parts
 should translate to local transformation in the output string. In our
 current prototype, we are already able to roundtrip 119662 out of 194557
 package descriptions of hackage (\~60%) with #(references.transform-fields.override-name)[an implementation that is concise and simple] #footnote[
-  To run this implementation, run the following in your terminal
-  ```bash
-  Cabal-tests:hackage-tests --test-option="field-roundtrip"
-  ```
+  To run this implementation to see for yourself:
+
+  - Clone the branch at this commit https://github.com/haskell/cabal/commit/00a79443390c3a28c911c91b2d8c2f432e09c05c
+  - Run the following in your terminal
+    ```bash
+    Cabal-tests:hackage-tests --test-option="field-roundtrip"
+    ```
 ].
 To increase the percentage of successful roundtrip, we need to detect CRLF/LF and exactprint accordingly;
 furthermore, we can't figure out whether a whitespace was a tab or a space yet. These will require
