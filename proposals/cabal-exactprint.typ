@@ -144,8 +144,8 @@ Secondly, we implement a modification/addition/removal framework to
 facilitate building modification functions. A notable feature request in #references.exact-printer-mega-issue.get-link
 is about being able to programmatically modify cabal files. With this
 mechanism, we expose a typed way to modify cabal files. For example,
-translating an endomorphism over `Version` to an endomorphism over
-`[FieldLines ann]`, which allows the user to modify the `cabal-version`
+translating `SpecVersion -> SpecVersion` to `[FieldLines ann] -> [FieldLines ann]`,
+which allows the user to modify the `cabal-version`
 field while having all the position validation already dealt with behind
 the scenes.
 
