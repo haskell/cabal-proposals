@@ -2,8 +2,8 @@
 
 
 #let mk-smartlink(url, name) = (
-  get-link: link(url)[_#(name)_],
-  override-name: new-name => link(url)[_#(new-name)_],
+  get-link: link(url)[#name],
+  override-name: new-name => link(url)[#new-name],
 )
 
 #let references = (
