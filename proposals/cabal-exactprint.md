@@ -103,8 +103,8 @@ facilitate building modification functions. A notable feature request in
 [*Exact-printer Mega-issue
 #7544*](https://github.com/haskell/cabal/issues/7544) is about being
 able to programmatically modify cabal files. With this mechanism, we
-expose a typed way to modify cabal files. For example, translating an
-endomorphism over `Version` to an endomorphism over `[FieldLines ann]`,
+expose a typed way to modify cabal files. For example, translating
+`SpecVersion -> SpecVersion` to `[FieldLines ann] -> [FieldLines ann]`,
 which allows the user to modify the `cabal-version` field while having
 all the position validation already dealt with behind the scenes.
 
@@ -422,6 +422,39 @@ this far.
   fields. This requires marking from which field the data comes
   originated, so at printing time we can recover what was originally
   written.
+
+To demonstrate the added complexity of "losing the shape of
+`[Field ann]`" casued by using `GenericPackageDescription`, we use the
+previous definition of `MonoidalFieldAla` as example. It is the same as
+the two following definition albeit generic in `ParsingPhase`. You can
+see that in the `Abst`ract case, we maintain backwards-compatibility of
+the type.
+
+``` haskell
+type MonoidalFieldAlaConc a = [ ([Comment Position], BS.ByteString, (Positions, a)) ]
+type MonoidalFieldAlaAbst a = a
+```
+
+From outside to inside, `MonoidalFieldAlaConc` represents the
+bookkeeping of the following structure:
+
+- We maintain everything in a list to remember which field a
+  `build-depends` belongs to. This is because `build-depends` can be
+  merged. Each item in this list will be referred to as a *group*.
+
+- Each group has its associated comments because each group was
+  originally a list of field lines.
+
+- The ByteString here represents the original cased name of Fields. The
+  user could've written `BuIlD-DePenDs` and we would need to restore it
+  despite this string looks very funny.
+
+- `Positions` is a product type, describing the field's position this
+  group is associated to, as well as the position of the first field
+  line `a` was originally found when represented as a string. This is
+  the direct consequence of duplicating the Field's information to the
+  leaf, because the field itself is not representable in
+  `GenericPackageDescription`.
 
 These problems illustrate that while it is possible to implement Cabal
 Exactprint using `GenericPackageDescription` as CST, it is not a good
