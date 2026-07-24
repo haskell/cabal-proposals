@@ -18,7 +18,7 @@ modification/addition/removal of fields, without mangling the format,
 structure or comments of users files.
 
 Furthermore it makes cabal authoritative on the package description
-format allowing downstream users to use the provided printing functions
+format, allowing downstream users to use the provided printing functions
 and get a stability guarantee.
 
 We define the parse-print idempotency to be `print . parse == id`, which
@@ -45,10 +45,11 @@ the Cabal CLI:
 
 - `cabal add`
 
-  Cabal should be able to add a dependency to a component. This can't be
-  implemented because modifying a portion of the package description's
-  in-memory representation mangles the entire package description,
-  similar to `cabal format`.
+  Cabal should be able to add a dependency to a component. The Rust
+  language's cabal equivalent, `cargo`, does this just fine. This can't
+  be implemented in Cabal yet because modifying a portion of the package
+  description's in-memory representation mangles the entire package
+  description, similar to `cabal format`.
 
 - Missing module declaration
 
@@ -66,13 +67,16 @@ the Cabal CLI:
 Cabal is also not authoritative in this matter, many projects have been
 created to do what cabal can't:
 
-- [*cabal-fmt*](https://github.com/phadej/cabal-fmt)
+- [*cabal-fmt*](https://github.com/phadej/cabal-fmt), a formatter.
 
-- [*cabal-add*](https://github.com/Bodigrim/cabal-add)
+- [*cabal-add*](https://github.com/Bodigrim/cabal-add), an non-official
+  implementation of `cabal add` command.
 
-- [*hpack*](https://github.com/sol/hpack)
+- [*hpack*](https://github.com/sol/hpack), an alternative to package
+  description.
 
-- [*autopack*](https://github.com/kowainik/autopack)
+- [*autopack*](https://github.com/kowainik/autopack), automatic module
+  descovery.
 
 ## Proposed Change
 
@@ -566,9 +570,6 @@ describe the modification API in terms of lens.
 - [*Retain comments in field parser
   #11252*](https://github.com/haskell/cabal/pull/11252)
 
-- [*Exact-printer Mega-issue
-  #7544*](https://github.com/haskell/cabal/issues/7544)
-
 - [*TriviaTree #11425*](https://github.com/haskell/cabal/pull/11425)
 
 - [*Barbie/Trees-that-grow
@@ -576,6 +577,23 @@ describe the modification API in terms of lens.
 
 - [*Typed-fields
   leana8959/cabal/typed-fields*](https://github.com/haskell/cabal/pull/11690)
+
+- [*cabal-add*](https://github.com/Bodigrim/cabal-add)
+
+- [*cabal-fmt*](https://github.com/phadej/cabal-fmt)
+
+- [*hpack*](https://github.com/sol/hpack)
+
+- [*autopack*](https://github.com/kowainik/autopack)
+
+- [*Jappie's original Haskell Foundation Tech
+  Proposal*](https://github.com/haskellfoundation/tech-proposals/pull/65)
+
+- [*Jappie's original Cabal
+  Proposal*](https://github.com/haskell/cabal-proposals/pull/5)
+
+- [*Exact-printer Mega-issue
+  #7544*](https://github.com/haskell/cabal/issues/7544)
 
 - [*Cabal manual/Package
   Descriptions*](https://cabal.readthedocs.io/en/stable/cabal-package-description-file.html#package-descriptions)
@@ -591,20 +609,6 @@ describe the modification API in terms of lens.
 
 - [*Trees that
   Grow*](https://www.cs.tufts.edu/comp/150FP/archive/simon-peyton-jones/trees-that-grow.pdf)
-
-- [*cabal-add*](https://github.com/Bodigrim/cabal-add)
-
-- [*cabal-fmt*](https://github.com/phadej/cabal-fmt)
-
-- [*Jappie's original Haskell Foundation Tech
-  Proposal*](https://github.com/haskellfoundation/tech-proposals/pull/65)
-
-- [*Jappie's original Cabal
-  Proposal*](https://github.com/haskell/cabal-proposals/pull/5)
-
-- [*hpack*](https://github.com/sol/hpack)
-
-- [*autopack*](https://github.com/kowainik/autopack)
 
 [^1]: In cabal, sections can have arguments. If-else conditions are
     actually sections where the condition is the single argument, and

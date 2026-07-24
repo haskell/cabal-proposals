@@ -7,13 +7,10 @@
 )
 
 #let references = (
+  // prior arts
   comment-parser-pr: mk-smartlink(
     "https://github.com/haskell/cabal/pull/11252",
   )[Retain comments in field parser \#11252],
-
-  exact-printer-mega-issue: mk-smartlink(
-    "https://github.com/haskell/cabal/issues/7544",
-  )[Exact-printer Mega-issue \#7544],
 
   trivia-tree: mk-smartlink(
     "https://github.com/haskell/cabal/pull/11425",
@@ -27,6 +24,26 @@
     "https://github.com/haskell/cabal/pull/11690",
   )[Typed-fields leana8959/cabal/typed-fields],
 
+  cabal-add-project: mk-smartlink("https://github.com/Bodigrim/cabal-add")[cabal-add],
+  cabal-fmt-project: mk-smartlink("https://github.com/phadej/cabal-fmt")[cabal-fmt],
+  hpack-project: mk-smartlink("https://github.com/sol/hpack")[hpack],
+  autopack-project: mk-smartlink("https://github.com/kowainik/autopack")[autopack],
+
+  // proposals
+  jappie-original-twg-proposal: mk-smartlink(
+    "https://github.com/haskellfoundation/tech-proposals/pull/65",
+  )[Jappie's original Haskell Foundation Tech Proposal],
+
+  jappie-original-cabal-proposal: mk-smartlink(
+    "https://github.com/haskell/cabal-proposals/pull/5",
+  )[Jappie's original Cabal Proposal],
+
+  // misc
+  exact-printer-mega-issue: mk-smartlink(
+    "https://github.com/haskell/cabal/issues/7544",
+  )[Exact-printer Mega-issue \#7544],
+
+  // documentation, references, papers
   package-description-documentation: mk-smartlink(
     "https://cabal.readthedocs.io/en/stable/cabal-package-description-file.html#package-descriptions",
   )[Cabal manual/Package Descriptions],
@@ -46,22 +63,6 @@
   trees-that-grow: mk-smartlink(
     "https://www.cs.tufts.edu/comp/150FP/archive/simon-peyton-jones/trees-that-grow.pdf",
   )[Trees that Grow],
-
-  cabal-add-project: mk-smartlink("https://github.com/Bodigrim/cabal-add")[cabal-add],
-
-  cabal-fmt-project: mk-smartlink("https://github.com/phadej/cabal-fmt")[cabal-fmt],
-
-  jappie-original-twg-proposal: mk-smartlink(
-    "https://github.com/haskellfoundation/tech-proposals/pull/65",
-  )[Jappie's original Haskell Foundation Tech Proposal],
-
-  jappie-original-cabal-proposal: mk-smartlink(
-    "https://github.com/haskell/cabal-proposals/pull/5",
-  )[Jappie's original Cabal Proposal],
-
-  // TODO: read these references in details
-  hpack-project: mk-smartlink("https://github.com/sol/hpack")[hpack],
-  autopack-project: mk-smartlink("https://github.com/kowainik/autopack")[autopack],
 )
 
 
@@ -80,7 +81,7 @@ descriptions in the cabal library.
 This will allow both cabal and other tools to introduce deltas into package descriptions through a typed API,
 simplifying the modification/addition/removal of fields, without mangling the format, structure or comments of users files.
 
-Furthermore it makes cabal authoritative on the package description format allowing downstream
+Furthermore it makes cabal authoritative on the package description format, allowing downstream
 users to use the provided printing functions and get a stability guarantee.
 
 We define the parse-print idempotency to be `print . parse == id`, which reads "parsing then
@@ -104,8 +105,9 @@ Here are some of the symptoms manifesting in different ways through out the Caba
 
 - `cabal add`
 
-  Cabal should be able to add a dependency to a component.
-  This can't be implemented because modifying a portion of the package description's in-memory representation
+  Cabal should be able to add a dependency to a component. The Rust language's cabal equivalent,
+  `cargo`, does this just fine.
+  This can't be implemented in Cabal yet because modifying a portion of the package description's in-memory representation
   mangles the entire package description, similar to `cabal format`.
 
 - Missing module declaration
@@ -123,10 +125,10 @@ Here are some of the symptoms manifesting in different ways through out the Caba
 Cabal is also not authoritative in this matter, many projects have been created to do what cabal
 can't:
 
-- #references.cabal-fmt-project.get-link
-- #references.cabal-add-project.get-link
-- #references.hpack-project.get-link
-- #references.autopack-project.get-link
+- #references.cabal-fmt-project.get-link, a formatter.
+- #references.cabal-add-project.get-link, an non-official implementation of `cabal add` command.
+- #references.hpack-project.get-link, an alternative to package description.
+- #references.autopack-project.get-link, automatic module descovery.
 
 == Proposed Change
 
