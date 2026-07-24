@@ -76,7 +76,7 @@ created to do what cabal can't:
   description.
 
 - [autopack](https://github.com/kowainik/autopack), automatic module
-  descovery.
+  discovery.
 
 ## Proposed Change
 
@@ -434,7 +434,7 @@ this far.
   written.
 
 To demonstrate the added complexity of "losing the shape of
-`[Field ann]`" casued by using `GenericPackageDescription`, we use the
+`[Field ann]`" caused by using `GenericPackageDescription`, we use the
 previous definition of `MonoidalFieldAla` as example. It is the same as
 the two following definition albeit generic in `ParsingPhase`. You can
 see that in the `Abst`ract case, we maintain backwards-compatibility at

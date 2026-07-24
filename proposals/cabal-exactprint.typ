@@ -132,7 +132,7 @@ can't:
 - #references.cabal-fmt-project.get-link, a formatter.
 - #references.cabal-add-project.get-link, an non-official implementation of `cabal add` command.
 - #references.hpack-project.get-link, an alternative to package description.
-- #references.autopack-project.get-link, automatic module descovery.
+- #references.autopack-project.get-link, automatic module discovery.
 
 == Proposed Change
 
@@ -475,7 +475,7 @@ this far.
   written.
 
 To demonstrate the added complexity of "losing the shape of `[Field ann]`"
-casued by using `GenericPackageDescription`, we use
+caused by using `GenericPackageDescription`, we use
 the previous definition of `MonoidalFieldAla` as example.
 It is the same as the two following definition albeit generic in `ParsingPhase`.
 You can see that in the `Abst`ract case, we maintain backwards-compatibility at type level.
