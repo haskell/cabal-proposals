@@ -27,6 +27,14 @@
     "https://github.com/haskell/cabal/pull/11690",
   )[Typed-fields leana8959/cabal/typed-fields],
 
+  package-description-documentation: mk-smartlink(
+    "https://cabal.readthedocs.io/en/stable/cabal-package-description-file.html#package-descriptions",
+  )[Cabal manual/Package Descriptions],
+
+  project-description-documentation: mk-smartlink(
+    "https://cabal.readthedocs.io/en/stable/cabal-project-description-file.html#project-description-cabal-project-file",
+  )[Cabal manual/Project Descriptions],
+
   biparsers: mk-smartlink(
     "https://dl.acm.org/doi/full/10.1145/3704910",
   )[Biparsers: Exact Printing for Data Synchronisation],
@@ -66,25 +74,27 @@ approach.
 
 == Summary
 
-The Cabal Exactprint project aims to develop a precise parsing and printing tool for .cabal files in the cabal library.
+The Cabal Exactprint project aims to develop a precise parsing and printing tool for package
+descriptions in the cabal library.
 
-This will allow both cabal and other tools to introduce deltas into cabal files through a typed API,
+This will allow both cabal and other tools to introduce deltas into package descriptions through a typed API,
 simplifying the modification/addition/removal of fields, without mangling the format, structure or comments of users files.
 
-Furthermore it makes cabal authoritative on the cabal file format
-allowing downstream users to use the provided printing functions
-and get a stability guarantee.
+Furthermore it makes cabal authoritative on the package description format allowing downstream
+users to use the provided printing functions and get a stability guarantee.
 
 We define the parse-print idempotency to be `print . parse == id`, which reads "parsing then
 printing is as if we've done nothing". We only focus on ensuring this property to hold for valid
-cabal files, and we not consider the braces syntax in this work.
+package descriptions, and we don't consider the braces syntax in this work.
+
+// TODO: cite braces syntax
 
 == Motivation
 
-Cabal reads cabal package manifests in the cabal format (with the extension
-.cabal). However, it is currently unable to modify it loselessly.
+Cabal builds packages by following stanzas written in #(references.package-description-documentation.override-name)[package descriptions].
+These files have the extension `.cabal`. Cabal is currently unable to modify such files loselessly.
 
-Here are some of the symptoms of this problem manifesting in different ways through out the cabal CLI:
+Here are some of the symptoms manifesting in different ways through out the Cabal CLI:
 
 - `cabal format`
 
@@ -95,19 +105,19 @@ Here are some of the symptoms of this problem manifesting in different ways thro
 - `cabal add`
 
   Cabal should be able to add a dependency to a component.
-  This can't be implemented because modifying a portion of the cabal file's in-memory representation
-  mangles the entire cabal file, similar to `cabal format`.
-  drops all comments and merges imports.
+  This can't be implemented because modifying a portion of the package description's in-memory representation
+  mangles the entire package description, similar to `cabal format`.
 
 - Missing module declaration
-  When a module exists but is not declared in the cabal file, cabal can't add it for you.
-  Again, because cabal would mangle the cabal file if it tries to touch it.
+
+  When a module is needed but is not declared in the package description, Cabal can't add it for you.
+  Again, because cabal would mangle the package description if it tries to touch it.
   It can only tell you that it's missing. Argh.
 
 - `cabal gen-bounds`
 
   Cabal is very helpful and can generate dependency constraints ("bounds") for you.
-  However, it just dumps them in the terminal, because it can't modify the cabal file.
+  However, it just dumps them in the terminal, because it can't modify the package description.
 
 
 Cabal is also not authoritative in this matter, many projects have been created to do what cabal
@@ -134,7 +144,7 @@ flexibility. As long as we respect its invariants during modification,
 unchanged parts in the output should stay the same, and changed parts
 should translate to local transformation in the output string. In our
 current prototype, we are already able to roundtrip 119662 out of 194557
-cabal files of hackage (\~60%) with an implementation that is concise
+package descriptions of hackage (\~60%) with an implementation that is concise
 and simple. To increase the percentage of successful roundtrip, we need
 to detect CRLF/LF and exactprint accordingly; furthermore, we can't
 figure out whether a whitespace was a tab or a space yet. These will require
@@ -142,15 +152,15 @@ changes to the lexer which we have previously done in #references.comment-parser
 
 Secondly, we implement a modification/addition/removal framework to
 facilitate building modification functions. A notable feature request in #references.exact-printer-mega-issue.get-link
-is about being able to programmatically modify cabal files. With this
-mechanism, we expose a typed way to modify cabal files. For example,
+is about being able to programmatically modify package descriptions. With this
+mechanism, we expose a typed way to modify package descriptions. For example,
 translating `SpecVersion -> SpecVersion` to `[FieldLines ann] -> [FieldLines ann]`,
 which allows the user to modify the `cabal-version`
 field while having all the position validation already dealt with behind
 the scenes.
 
 We will use the `Parsec` and `Pretty` classes to implement the typed
-modification framework. Each field in a Cabal file is represented by a
+modification framework. Each field in a package description is represented by a
 field name in association with some field lines. Upon modification, we
 proceed with the following steps:
 
@@ -252,7 +262,7 @@ order since september 2025 and what I learned from these attempts.
   We draw inspiration from ghc-exactprint and its trees that grow model,
   annotating data structurally on each extension point. Reaching the end
   of the design space of this approach with just enough fields
-  implemented to make two cabal files Hackage roundtrip 100%, inherent
+  implemented to make two package description from Hackage roundtrip 100%, inherent
   problems of using `GenericPackageDescription` as CST to implement
   exactprint started to catch my eyes. This is the first successful
   approach where syntactic roundtrip property of `Pretty`/`Parsec` are
@@ -272,7 +282,7 @@ to implement Cabal Exactprint.
   field).
 
   This attempt proved that modifying or printing `[Field Position]` (or
-  something isomorphic to it) is a lot easier. The shape of a cabal file
+  something isomorphic to it) is a lot easier. The shape of the field syntax
   is not lost and better reflects what was originally written. Also we
   would avoid threading everything through field grammar, which proved
   to be unwieldy.
@@ -413,7 +423,7 @@ this far.
 
 - Regarding losing the shape of the sections:
 
-  In a Cabal file, it is possible to have trivia for each section as
+  In a package description, it is possible to have trivia for each section as
   well. The library stanza "library" is normalized to lower case in
   Cabal, but to achieve 100% roundtrip, we need to be able to save the
   original string (which I call _cased name_). Worse, cabal
@@ -528,12 +538,12 @@ this would benefit the functionality of Cabal itself many ways, namely
 the following:
 
 - New command `cabal add` that adds a dependency automatically by
-  editing the cabal file.
-- `cabal gen-bounds` can modify the bounds of a cabal file.
-- `cabal format` can format a cabal file in a canonical way while
+  editing the package description.
+- `cabal gen-bounds` can modify the bounds of a package description.
+- `cabal format` can format a package description in a canonical way while
   preserving comments.
 - `cabal init` can leverage the "addition" part of the modification
-  framework and generate cabal files easily.
+  framework and generate package description easily.
 
 It would also benefit existing programs that depend on Cabal:
 
@@ -548,9 +558,13 @@ It would also benefit existing programs that depend on Cabal:
 
 - #references.cabal-fmt-project.get-link
 
-  It parses the cabal file twice: once with `readFields` from cabal, and
+  It parses the package description twice: once with `readFields` from cabal, and
   again with its own parser to find all the comments. This can be
   simplified the new `readFieldsWithComments` in #references.comment-parser-pr.get-link.
+
+
+This work would also simplify implementation of formatters or modification tools operating on
+other formats using the same envelope format, namely #(references.project-description-documentation.override-name)["project descriptions"].
 
 == Implementation Notes
 
