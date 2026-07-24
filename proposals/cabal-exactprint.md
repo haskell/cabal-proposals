@@ -135,15 +135,15 @@ modification, we proceed with the following steps:
 
 - - Should the field be multiple (e.g. `build-depends` or
     `license-files`), For each item `it`, we swap out the old textual
-    represent with the new one, using the location of `it` provided by
-    the parser. This solves the problem of in-field trivia by only
+    representation with the new one, using the location of `it` provided
+    by the parser. This solves the problem of in-field trivia by only
     modifying the original field lines within a specific range that has
     changed.
 
   - Otherwise, we replace the entire string.
 
-- Traverse all fields that has been modified to correct lines that have
-  been moved.
+- Traverse all fields that has been modified to correct line numbers
+  that have been moved.
 
   - If a field `f` is moved down due to addition before `f`, we
     increment the line numbers of `f` and its following siblings
@@ -170,7 +170,7 @@ We want to let user describe a single modification that we call `Edit`
 by specifying a focus and a transformation. Here we add a new dependency
 `myNewDep` as an example. This modification can be expressed in plain
 English as "within the section library with no arguments [^2], within
-the field `build-depends`, add (append) a `myNewDep`." In pseudo Haskell
+the field `build-depends`, add (append) `myNewDep`." In pseudo Haskell
 of the API we intend to build the aforementioned example modification
 can be described as:
 
@@ -200,8 +200,9 @@ paths down the tree of fields. At the leaf (in the above example,
 `[FieldLine Position]` by providing `addFieldLinesListLike`.
 
 We strive to make the API flexible and will expose ways to modify
-`[Field Position]` directly. However we don't try to guarantee that this
-will always be correct.
+`[Field Position]` directly. We don't try to guarantee the correctness
+of this escape hatch, however we provide validation functions to catch
+problems.
 
 ## Alternatives Considered
 
@@ -436,8 +437,8 @@ To demonstrate the added complexity of "losing the shape of
 `[Field ann]`" casued by using `GenericPackageDescription`, we use the
 previous definition of `MonoidalFieldAla` as example. It is the same as
 the two following definition albeit generic in `ParsingPhase`. You can
-see that in the `Abst`ract case, we maintain backwards-compatibility of
-the type.
+see that in the `Abst`ract case, we maintain backwards-compatibility at
+type level.
 
 ``` haskell
 type MonoidalFieldAlaConc a = [ ([Comment Position], BS.ByteString, (Positions, a)) ]
