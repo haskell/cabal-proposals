@@ -97,13 +97,14 @@ flexibility. As long as we respect its invariants during modification,
 unchanged parts in the output should stay the same, and changed parts
 should translate to local transformation in the output string. In our
 current prototype, we are already able to roundtrip 119662 out of 194557
-package descriptions of hackage (\~60%) with an implementation that is
-concise and simple. To increase the percentage of successful roundtrip,
-we need to detect CRLF/LF and exactprint accordingly; furthermore, we
-can't figure out whether a whitespace was a tab or a space yet. These
-will require changes to the lexer which we have previously done in
-[Retain comments in field parser
-#11252](https://github.com/haskell/cabal/pull/11252).
+package descriptions of hackage (\~60%) with [an implementation that is
+concise and
+simple](https://github.com/leana8959/cabal/tree/transform-fields) [^1].
+To increase the percentage of successful roundtrip, we need to detect
+CRLF/LF and exactprint accordingly; furthermore, we can't figure out
+whether a whitespace was a tab or a space yet. These will require
+changes to the lexer which we have previously done in [Retain comments
+in field parser #11252](https://github.com/haskell/cabal/pull/11252).
 
 Secondly, we implement a modification/addition/removal framework to
 facilitate building modification functions. A notable feature request in
@@ -168,7 +169,7 @@ cases to ensure that important invariants are preserved, namely that
 We want to let user describe a single modification that we call `Edit`
 by specifying a focus and a transformation. Here we add a new dependency
 `myNewDep` as an example. This modification can be expressed in plain
-English as "within the section library with no arguments [^1], within
+English as "within the section library with no arguments [^2], within
 the field `build-depends`, add (append) a `myNewDep`." In pseudo Haskell
 of the API we intend to build the aforementioned example modification
 can be described as:
@@ -237,7 +238,7 @@ From then, I started experimenting using `[Field Position]` as the CST
 to implement Cabal Exactprint.
 
 - [Typed-fields
-  leana8959/cabal/typed-fields](https://github.com/haskell/cabal/pull/11690)
+  leana8959/cabal/typed-fields](https://github.com/leana8959/cabal/tree/typed-fields)
 
   Rereading the original [Exact-printer Mega-issue
   #7544](https://github.com/haskell/cabal/issues/7544), I realized that
@@ -574,7 +575,7 @@ describe the modification API in terms of lens.
   #11690](https://github.com/haskell/cabal/pull/11690)
 
 - [Typed-fields
-  leana8959/cabal/typed-fields](https://github.com/haskell/cabal/pull/11690)
+  leana8959/cabal/typed-fields](https://github.com/leana8959/cabal/tree/typed-fields)
 
 - [cabal-add](https://github.com/Bodigrim/cabal-add)
 
@@ -583,6 +584,9 @@ describe the modification API in terms of lens.
 - [hpack](https://github.com/sol/hpack)
 
 - [autopack](https://github.com/kowainik/autopack)
+
+- [Transform-fields
+  leana8959/cabal/transform-fields](https://github.com/leana8959/cabal/tree/transform-fields)
 
 - [Jappie's original Haskell Foundation Tech
   Proposal](https://github.com/haskellfoundation/tech-proposals/pull/65)
@@ -607,7 +611,14 @@ describe the modification API in terms of lens.
 - [Trees that
   Grow](https://www.cs.tufts.edu/comp/150FP/archive/simon-peyton-jones/trees-that-grow.pdf)
 
-[^1]: In cabal, sections can have arguments. If-else conditions are
+[^1]: To run this implementation, run the following in your terminal
+
+    ``` bash
+    Cabal-tests:hackage-tests --test-option="field-roundtrip"
+      
+    ```
+
+[^2]: In cabal, sections can have arguments. If-else conditions are
     actually sections where the condition is the single argument, and
     `library` is a section that can take a library name as a section
     argument.

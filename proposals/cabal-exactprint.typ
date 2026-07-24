@@ -7,7 +7,7 @@
 )
 
 #let references = (
-  // prior arts
+  // implementations
   comment-parser-pr: mk-smartlink(
     "https://github.com/haskell/cabal/pull/11252",
   )[Retain comments in field parser \#11252],
@@ -21,13 +21,17 @@
   )[Barbie/Trees-that-grow \#11690],
 
   typed-fields: mk-smartlink(
-    "https://github.com/haskell/cabal/pull/11690",
+    "https://github.com/leana8959/cabal/tree/typed-fields",
   )[Typed-fields leana8959/cabal/typed-fields],
 
   cabal-add-project: mk-smartlink("https://github.com/Bodigrim/cabal-add")[cabal-add],
   cabal-fmt-project: mk-smartlink("https://github.com/phadej/cabal-fmt")[cabal-fmt],
   hpack-project: mk-smartlink("https://github.com/sol/hpack")[hpack],
   autopack-project: mk-smartlink("https://github.com/kowainik/autopack")[autopack],
+
+  transform-fields: mk-smartlink(
+    "https://github.com/leana8959/cabal/tree/transform-fields",
+  )[Transform-fields leana8959/cabal/transform-fields],
 
   // proposals
   jappie-original-twg-proposal: mk-smartlink(
@@ -146,10 +150,14 @@ flexibility. As long as we respect its invariants during modification,
 unchanged parts in the output should stay the same, and changed parts
 should translate to local transformation in the output string. In our
 current prototype, we are already able to roundtrip 119662 out of 194557
-package descriptions of hackage (\~60%) with an implementation that is concise
-and simple. To increase the percentage of successful roundtrip, we need
-to detect CRLF/LF and exactprint accordingly; furthermore, we can't
-figure out whether a whitespace was a tab or a space yet. These will require
+package descriptions of hackage (\~60%) with #(references.transform-fields.override-name)[an implementation that is concise and simple] #footnote[
+  To run this implementation, run the following in your terminal
+  ```bash
+  Cabal-tests:hackage-tests --test-option="field-roundtrip"
+  ```
+].
+To increase the percentage of successful roundtrip, we need to detect CRLF/LF and exactprint accordingly;
+furthermore, we can't figure out whether a whitespace was a tab or a space yet. These will require
 changes to the lexer which we have previously done in #references.comment-parser-pr.get-link.
 
 Secondly, we implement a modification/addition/removal framework to
