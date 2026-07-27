@@ -1,11 +1,11 @@
+// This source file is used to generate ./cabal-exactprint.md using pandoc,
+// so the references are kept in sync in a coherent format.
+
 // Pandoc doesn't seem to support bibliography files
-
-
 #let mk-smartlink(url, name) = (
   get-link: link(url)[#name],
   override-name: new-name => link(url)[#new-name],
 )
-
 #let references = (
   // implementations
   comment-parser-pr: mk-smartlink(
@@ -28,6 +28,7 @@
   cabal-fmt-project: mk-smartlink("https://github.com/phadej/cabal-fmt")[cabal-fmt],
   hpack-project: mk-smartlink("https://github.com/sol/hpack")[hpack],
   autopack-project: mk-smartlink("https://github.com/kowainik/autopack")[autopack],
+  hls-project: mk-smartlink("https://github.com/haskell/haskell-language-server")[haskell-language-server],
 
   transform-fields: mk-smartlink(
     "https://github.com/leana8959/cabal/tree/transform-fields",
@@ -91,8 +92,6 @@ users to use the provided printing functions and get a stability guarantee.
 We define the parse-print idempotency to be `print . parse == id`, which reads "parsing then
 printing is as if we've done nothing". We only focus on ensuring this property to hold for valid
 package descriptions, and we don't consider the braces syntax in this work.
-
-// TODO: cite braces syntax
 
 == Motivation
 
@@ -158,7 +157,7 @@ package descriptions of hackage (\~60%) with #(references.transform-fields.overr
     ```bash
     Cabal-tests:hackage-tests --test-option="field-roundtrip"
     ```
-].
+]. The review will also be easy thanks to the small diff.
 To increase the percentage of successful roundtrip, we need to detect CRLF/LF and exactprint accordingly;
 furthermore, we can't figure out whether a whitespace was a tab or a space yet. These will require
 changes to the lexer which we have previously done in #references.comment-parser-pr.get-link.
@@ -208,8 +207,8 @@ independently.
 To validate an exactprint implementation, we test the property
 `exactRenderFields . readFields = id` against Hackage; to validate a
 modification framework implementation, we add golden tests for different
-cases to ensure that important invariants are preserved, namely that
-`Position` of fields are not overlapping.
+cases to ensure that important invariants of `[Field ann]` are preserved,
+namely that `Position` of fields are not overlapping.
 
 We want to let user describe a single modification that we call `Edit`
 by specifying a focus and a transformation. Here we add a new dependency
@@ -492,7 +491,7 @@ From outside to inside, `MonoidalFieldAlaConc` represents the bookkeeping of the
 - We maintain everything in a list to remember which field a `build-depends` belongs to. This is
   because `build-depends` can be merged. Each item in this list will be referred to as a _group_.
 
-- Each group has its associated comments because each group was originally a list of field lines.
+- Each group (which was a field) has its associated comments from the original fieldlines.
 
 - The ByteString here represents the original cased name of Fields. The user could've written
   `BuIlD-DePenDs` and we would need to restore it despite this string looks very funny.
@@ -575,6 +574,8 @@ It would also benefit existing programs that depend on Cabal:
   again with its own parser to find all the comments. This can be
   simplified the new `readFieldsWithComments` in #references.comment-parser-pr.get-link.
 
+- Eventually #references.hls-project.get-link will be able to generate
+  code actions to modify cabal files.
 
 This work would also simplify implementation of formatters or modification tools operating on
 other formats using the same envelope format, namely #(references.project-description-documentation.override-name)["project descriptions"].
@@ -583,9 +584,9 @@ other formats using the same envelope format, namely #(references.project-descri
 
 references.jappie-original-twg-proposal.get-link has been accepted and funded by the Haskell Foundation. Under Jappie and
 the Haskell Foundation's funding since september 2025, I have tried to
-implement and iterate the previous proposal. Due to the design evoving
+implement and iterate on the previous proposal. Due to the design evoving
 drastically over time, this is the most up-to-date proposal describing
-our ideas after refinding them after a year.
+our ideas after refining them after a year.
 
 I will continue to work on this myself under the funding of Jappie and
 Haskell Foundation.

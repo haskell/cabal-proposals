@@ -100,11 +100,12 @@ current prototype, we are already able to roundtrip 119662 out of 194557
 package descriptions of hackage (\~60%) with [an implementation that is
 concise and
 simple](https://github.com/leana8959/cabal/tree/transform-fields) [^1].
-To increase the percentage of successful roundtrip, we need to detect
-CRLF/LF and exactprint accordingly; furthermore, we can't figure out
-whether a whitespace was a tab or a space yet. These will require
-changes to the lexer which we have previously done in [Retain comments
-in field parser #11252](https://github.com/haskell/cabal/pull/11252).
+The review will also be easy thanks to the small diff. To increase the
+percentage of successful roundtrip, we need to detect CRLF/LF and
+exactprint accordingly; furthermore, we can't figure out whether a
+whitespace was a tab or a space yet. These will require changes to the
+lexer which we have previously done in [Retain comments in field parser
+#11252](https://github.com/haskell/cabal/pull/11252).
 
 Secondly, we implement a modification/addition/removal framework to
 facilitate building modification functions. A notable feature request in
@@ -163,8 +164,8 @@ independently.
 To validate an exactprint implementation, we test the property
 `exactRenderFields . readFields = id` against Hackage; to validate a
 modification framework implementation, we add golden tests for different
-cases to ensure that important invariants are preserved, namely that
-`Position` of fields are not overlapping.
+cases to ensure that important invariants of `[Field ann]` are
+preserved, namely that `Position` of fields are not overlapping.
 
 We want to let user describe a single modification that we call `Edit`
 by specifying a focus and a transformation. Here we add a new dependency
@@ -452,8 +453,8 @@ bookkeeping of the following structure:
   `build-depends` belongs to. This is because `build-depends` can be
   merged. Each item in this list will be referred to as a *group*.
 
-- Each group has its associated comments because each group was
-  originally a list of field lines.
+- Each group (which was a field) has its associated comments from the
+  original fieldlines.
 
 - The ByteString here represents the original cased name of Fields. The
   user could've written `BuIlD-DePenDs` and we would need to restore it
@@ -543,6 +544,10 @@ It would also benefit existing programs that depend on Cabal:
   can be simplified the new `readFieldsWithComments` in [Retain comments
   in field parser #11252](https://github.com/haskell/cabal/pull/11252).
 
+- Eventually
+  [haskell-language-server](https://github.com/haskell/haskell-language-server)
+  will be able to generate code actions to modify cabal files.
+
 This work would also simplify implementation of formatters or
 modification tools operating on other formats using the same envelope
 format, namely ["project
@@ -553,9 +558,9 @@ descriptions"](https://cabal.readthedocs.io/en/stable/cabal-project-description-
 references.jappie-original-twg-proposal.get-link has been accepted and
 funded by the Haskell Foundation. Under Jappie and the Haskell
 Foundation's funding since september 2025, I have tried to implement and
-iterate the previous proposal. Due to the design evoving drastically
+iterate on the previous proposal. Due to the design evoving drastically
 over time, this is the most up-to-date proposal describing our ideas
-after refinding them after a year.
+after refining them after a year.
 
 I will continue to work on this myself under the funding of Jappie and
 Haskell Foundation.
@@ -585,6 +590,8 @@ describe the modification API in terms of lens.
 - [hpack](https://github.com/sol/hpack)
 
 - [autopack](https://github.com/kowainik/autopack)
+
+- [haskell-language-server](https://github.com/haskell/haskell-language-server)
 
 - [Transform-fields
   leana8959/cabal/transform-fields](https://github.com/leana8959/cabal/tree/transform-fields)
