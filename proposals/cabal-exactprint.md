@@ -506,8 +506,9 @@ fields we support.
 
 ## Backwards Compatibility / Migration
 
-Because we don't touch the field grammar infrastructure at all, we don't
-foresee any backwards-compatibility issues.
+We are extending the parser and implementing a modification framework.
+The changes are local to the parser, we don't foresee any
+backwards-compatibility issues.
 
 ## Interested parties
 
@@ -557,14 +558,14 @@ descriptions"](https://cabal.readthedocs.io/en/stable/cabal-project-description-
 
 [Jappie's original Haskell Foundation Tech
 Proposal](https://github.com/haskellfoundation/tech-proposals/pull/65)
-has been accepted and funded by the Haskell Foundation. Under Jappie and
-the Haskell Foundation's funding since september 2025, I have tried to
+has been accepted and funded by the Haskell Foundation. Under the
+Haskell Foundation's funding since september 2025, I have tried to
 implement and iterate on the previous proposal. Due to the design
 evoving drastically over time, this is the most up-to-date proposal
 describing our ideas after refining them after a year.
 
-I will continue to work on this myself under the funding of Jappie and
-Haskell Foundation.
+I will continue to work on this myself under the funding of the Haskell
+Foundation.
 
 ## Open Questions
 

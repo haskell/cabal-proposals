@@ -540,8 +540,9 @@ fields we support.
 
 == Backwards Compatibility / Migration
 
-Because we don't touch the field grammar infrastructure at all, we don't
-foresee any backwards-compatibility issues.
+We are extending the parser and implementing a modification framework.
+The changes are local to the parser, we don't foresee any backwards-compatibility issues.
+
 
 == Interested parties
 
