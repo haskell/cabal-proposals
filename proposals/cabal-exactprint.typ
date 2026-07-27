@@ -582,7 +582,7 @@ other formats using the same envelope format, namely #(references.project-descri
 
 == Implementation Notes
 
-references.jappie-original-twg-proposal.get-link has been accepted and funded by the Haskell Foundation. Under Jappie and
+#references.jappie-original-twg-proposal.get-link has been accepted and funded by the Haskell Foundation. Under Jappie and
 the Haskell Foundation's funding since september 2025, I have tried to
 implement and iterate on the previous proposal. Due to the design evoving
 drastically over time, this is the most up-to-date proposal describing
