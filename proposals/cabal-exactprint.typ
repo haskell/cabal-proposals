@@ -24,11 +24,19 @@
     "https://github.com/leana8959/cabal/tree/typed-fields",
   )[Typed-fields leana8959/cabal/typed-fields],
 
-  cabal-add-project: mk-smartlink("https://github.com/Bodigrim/cabal-add")[cabal-add],
-  cabal-fmt-project: mk-smartlink("https://github.com/phadej/cabal-fmt")[cabal-fmt],
+  cabal-add-project: mk-smartlink(
+    "https://github.com/Bodigrim/cabal-add",
+  )[cabal-add],
+  cabal-fmt-project: mk-smartlink(
+    "https://github.com/phadej/cabal-fmt",
+  )[cabal-fmt],
   hpack-project: mk-smartlink("https://github.com/sol/hpack")[hpack],
-  autopack-project: mk-smartlink("https://github.com/kowainik/autopack")[autopack],
-  hls-project: mk-smartlink("https://github.com/haskell/haskell-language-server")[haskell-language-server],
+  autopack-project: mk-smartlink(
+    "https://github.com/kowainik/autopack",
+  )[autopack],
+  hls-project: mk-smartlink(
+    "https://github.com/haskell/haskell-language-server",
+  )[haskell-language-server],
 
   transform-fields: mk-smartlink(
     "https://github.com/leana8959/cabal/tree/transform-fields",
@@ -176,30 +184,62 @@ modification framework. Each field in a package description is represented by a
 field name in association with some field lines. Upon modification, we
 proceed with the following steps:
 
-- Should the field lines be non empty, join them into a single field
++ Should the field lines be non empty, join them into a single field
   line `fl` with indentation and newlines.
-- Run the `Parsec` instance of a desired type `τ` on the joined field
+
++ Run the `Parsec` instance of a desired type `τ` on the joined field
   lines `fl`, obtain data `p` which these field lines represent.
-- Apply user's transformation function `t` on `p`, obtaining `p'`.
-- Run the `Pretty` instance of `τ` on `p'` to obtain a new textual
+
++ Apply user's transformation function `t` on `p`, obtaining `p'`.
+
++ Run the `Pretty` instance of `τ` on `p'` to obtain a new textual
   representation `fl'`.
--
-  - Should the field be multiple (e.g. `build-depends` or
-    `license-files`), For each item `it`, we swap out the old textual
-    representation with the new one, using the location of `it` provided by
-    the parser. This solves the problem of in-field trivia by only modifying
-    the original field lines within a specific range that has changed.
-  - Otherwise, we replace the entire string.
-- Traverse all fields that has been modified to correct line numbers that have
+
++ We replace the entire `fl` with `fl'`.
+
++ Traverse all fields that has been modified to correct line numbers that have
   been moved.
-  - If a field `f` is moved down due to addition before `f`, we
+  + If a field `f` is moved down due to addition before `f`, we
     increment the line numbers of `f` and its following siblings
     accordingly.
-  - If a field `f` is moved up due to removal before `f`, we can either
+  + If a field `f` is moved up due to removal before `f`, we can either
     do nothing (leaving empty lines before `f`) or decrement the line
     numbers of `f` and its following siblings accordingly.
-  - Modification is be a hybrid of addition and removal.
-- Run modifications similar to this until no more is demanded.
+  + Modification is be a hybrid of addition and removal.
+
++ Run modifications similar to this until no more is demanded.
+
++ Validate that the new data is parsable and parses to the transformed value.
+
+The above steps would not allow modifying list like values such as `[Dependency]`, especially
+that cabal allows having more than one comma separated item in a list to be on the same line,
+there's no bijection between fieldline and the individual item parsed.
+
+To achieve precise and local change to a single item in a list,
+we extend the algorithm in the following ways, using `Dependency` an example:
+
++ Instead of parsing `Located [Dependency]` where we obtain a single location the start of the
+  entire list, we parse `[Located Dependency]` to obtain a location on each item.
+
++ Considering the user might only want to modify an item, the user's transformation function
+  can be typed as `Dependency -> Maybe Dependency` where `Maybe` indicates that the dependency
+  should be rerendered.
+
++ We only operate on changed `Dependency`.
+  Given the location of a `Dependency` and the its transformed counterpart, refer to its source position
+  and swap out the old representation with the new representation.
+  Each change of an item is hence local and composable.
+
+The extended algorithm doesn't cover the use case of adding new dependencies to the front
+or the end of the dependency list, or sorting the list.
+To do so, one can use the original algorithm for single values.
+// TODO: this would format the entire list, but at the same time if you were to sort
+// where sometimes there are more than one on a singleline, you might as well just mangle the entire
+// field.
+// Note that the rest of the file will still be untouched. The change will be scoped to a Field
+// instead of a fieldline item.
+// `foo, bar
+// baz`
 
 Exactprint and the modification framework can be implemented and tested
 independently.
@@ -255,7 +295,9 @@ escape hatch, however we provide validation functions to catch problems.
 Below is an exhaustive list of the changes we tried in chronological
 order since september 2025 and what I learned from these attempts.
 
-- #(references.trivia-tree.override-name)[Trivia Tree \#11425 (proof of concept)]
+- #(
+    references.trivia-tree.override-name
+  )[Trivia Tree \#11425 (proof of concept)]
   implements a untyped tree `TriviaTree` using existential type.
 
   With it, we can imtate the shape of a recursive type `τ` freely and

@@ -123,40 +123,60 @@ modification framework. Each field in a package description is
 represented by a field name in association with some field lines. Upon
 modification, we proceed with the following steps:
 
-- Should the field lines be non empty, join them into a single field
-  line `fl` with indentation and newlines.
+1.  Should the field lines be non empty, join them into a single field
+    line `fl` with indentation and newlines.
 
-- Run the `Parsec` instance of a desired type `τ` on the joined field
-  lines `fl`, obtain data `p` which these field lines represent.
+2.  Run the `Parsec` instance of a desired type `τ` on the joined field
+    lines `fl`, obtain data `p` which these field lines represent.
 
-- Apply user's transformation function `t` on `p`, obtaining `p'`.
+3.  Apply user's transformation function `t` on `p`, obtaining `p'`.
 
-- Run the `Pretty` instance of `τ` on `p'` to obtain a new textual
-  representation `fl'`.
+4.  Run the `Pretty` instance of `τ` on `p'` to obtain a new textual
+    representation `fl'`.
 
-- - Should the field be multiple (e.g. `build-depends` or
-    `license-files`), For each item `it`, we swap out the old textual
-    representation with the new one, using the location of `it` provided
-    by the parser. This solves the problem of in-field trivia by only
-    modifying the original field lines within a specific range that has
-    changed.
+5.  We replace the entire `fl` with `fl'`.
 
-  - Otherwise, we replace the entire string.
+6.  Traverse all fields that has been modified to correct line numbers
+    that have been moved.
 
-- Traverse all fields that has been modified to correct line numbers
-  that have been moved.
+    1.  If a field `f` is moved down due to addition before `f`, we
+        increment the line numbers of `f` and its following siblings
+        accordingly.
 
-  - If a field `f` is moved down due to addition before `f`, we
-    increment the line numbers of `f` and its following siblings
-    accordingly.
+    2.  If a field `f` is moved up due to removal before `f`, we can
+        either do nothing (leaving empty lines before `f`) or decrement
+        the line numbers of `f` and its following siblings accordingly.
 
-  - If a field `f` is moved up due to removal before `f`, we can either
-    do nothing (leaving empty lines before `f`) or decrement the line
-    numbers of `f` and its following siblings accordingly.
+    3.  Modification is be a hybrid of addition and removal.
 
-  - Modification is be a hybrid of addition and removal.
+7.  Run modifications similar to this until no more is demanded.
 
-- Run modifications similar to this until no more is demanded.
+The above steps would not allow modifying list like values such as
+`[Dependency]`, especially that cabal allows having more than one comma
+separated item in a list to be on the same line, there's no bijection
+between fieldline and the individual item parsed.
+
+To achieve precise and local change to a single item in a list, we
+extend the algorithm in the following ways, using `Dependency` an
+example:
+
+1.  Instead of parsing `Located [Dependency]` where we obtain a single
+    location the start of the entire list, we parse
+    `[Located Dependency]` to obtain a location on each item.
+
+2.  Considering the user might only want to modify an item, the user's
+    transformation function can be typed as
+    `Dependency -> Maybe Dependency` where `Maybe` indicates that the
+    dependency should be rerendered.
+
+3.  We only operate on changed `Dependency`. Given the location of a
+    `Dependency` and the its transformed counterpart, refer to its
+    source position and swap out the old representation with the new
+    representation.
+
+The extended algorithm doesn't cover the use case of adding new
+dependencies to the front or the end of the dependency list, or sorting.
+To do so, one can use the original algorithm for single values.
 
 Exactprint and the modification framework can be implemented and tested
 independently.
