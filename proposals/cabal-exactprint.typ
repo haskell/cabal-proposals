@@ -342,6 +342,7 @@ build-depends:
 
 Example: sort the dependencies.
 We treat the entire dependency list as an atom, and all in-field-lines trivia are lost.
+In-field-lines trivia are also lost because the entire list is rerendered.
 The comments are not moved to the closest item. See open question on comment handling.
 ```haskell
 sortDependency
@@ -354,7 +355,7 @@ sortDependency cmp = modifyValueAtomAla @(List CommaVSep @Identity) @Dependency 
 ```cabal
 -- Sort by ascending package name.
 build-depends:
-  base >             4 && < 5,
+  base > 4 && < 5,
   containers > 0.8,
   -- interleaved comments
   text > 2.0.4,
@@ -755,6 +756,34 @@ I will continue to work on this myself under the funding of the Haskell Foundati
 == Open Questions
 We are still investigating if describing it is possible or beneficial to
 describe the modification API in terms of lens.
+
+- Whitespaces
+
+  Cabal allow leading spaces to be ` ` (plain whitespace) or `\t` (tab).
+  We would like to know if it is possible to enforce the usage of plain whitespace across all cabal files.
+  There is an existing todo comment to enforce the use of plain whitespace in field indentation in field lexer.
+
+  Trailing whitespaces and lines with only whitespaces are also lost in the current exactprint implementation.
+  To restore them, they need to be saved. This would entail more modification to the lexer and field parser.
+  We want to know if it's feasible to drop them.
+  On a related note, git can be configured to detect trailing whitespaces and warn the user, or
+  automatically remove them.
+
+- Line endings
+
+  On a windows machine, lines are ended with CRLF instead of LF. It shouldn't be hard to detect if a
+  cabal file uses one or the other.
+  However, we want to discuss on what to do regarding mixed line endings.
+
+- Sorting
+
+  It is possible to sort a cabal field using the proposed API.
+  The loss of trivia is local to the field, but it has some problems:
+  - Comments will stay where they were originally.
+  - In-field-lines trivia will be lost.
+
+  Sorting is more of a formatter feature, which exactprint doesn't try to perfect. We want to know
+  if the current implementation is satisfactory.
 
 == References
 #list(..references.values().map(x => x.get-link))
