@@ -118,8 +118,8 @@ translating `SpecVersion -> SpecVersion` to
 the `cabal-version` field while having all the position validation
 already dealt with behind the scenes.
 
-We will use the `Parsec` and `Pretty` classes to implement the typed
-modification framework. Each field in a package description is
+To implement this we use existing building blocks. `Pretty` and `Parsec`
+instance already exist. Each field in a package description is
 represented by a field name in association with some field lines. Upon
 modification, we proceed with the following steps:
 
@@ -151,6 +151,9 @@ modification, we proceed with the following steps:
 
 7.  Run modifications similar to this until no more is demanded.
 
+8.  Validate that the new data is parsable and parses to the transformed
+    value.
+
 The above steps would not allow modifying list like values such as
 `[Dependency]`, especially that cabal allows having more than one comma
 separated item in a list to be on the same line, there's no bijection
@@ -172,11 +175,144 @@ example:
 3.  We only operate on changed `Dependency`. Given the location of a
     `Dependency` and the its transformed counterpart, refer to its
     source position and swap out the old representation with the new
-    representation.
+    representation. Each change of an item is hence local and
+    composable.
 
 The extended algorithm doesn't cover the use case of adding new
-dependencies to the front or the end of the dependency list, or sorting.
-To do so, one can use the original algorithm for single values.
+dependencies to the front or the end of the dependency list, or sorting
+the list. To do so, one can use the original algorithm for single
+values.
+
+### Proposed API
+
+Below are parts of the proposed API, and some example usages of it.
+
+``` haskell
+-- | Build a @[FieldLine Position]@ modification function given a function @a -> a@, parsed as @b@.
+modifyValueAtomAla
+  :: forall (b :: Type) (a :: Type)
+   . ( Newtype b a
+     , Parsec b
+     , Pretty b
+     )
+  => (a -> Maybe a) -- ^ Nothing prevents a new render.
+  -> ([FieldLine Position] -> FieldLine Position))
+modifyValueAtomAla = {- Implementation of the algorithm for single value. -}
+
+-- | Build a @[FieldLine Position]@ modification function given a function @a -> Maybe a@, parsed as @List sep b a@.
+modifyValueList
+  :: forall (sep :: Type) (b :: Type) (a :: Type)
+   . ( Newtype (List sep b (Located a)) (Located a)
+     , Parsec (List sep b (Located a))
+     , Pretty (List sep b (Located a))
+     )
+  => (a -> Maybe a) -- ^ Nothing prevents a new render.
+  -> ([FieldLine Position] -> [FieldLine Position])
+modifyValueList = {- Implementation of the extended algorithm for multiple values. -}
+
+addValueList
+  :: forall (sep :: Type) (b :: Type) (a :: Type)
+   . ( Newtype (List sep b (Located a)) (Located a)
+     , Parsec (List sep b (Located a))
+     , Pretty (List sep b (Located a))
+     )
+  => InsertPosition -- ^ prepend or append
+  -> a
+  -> ([FieldLine Position] -> [FieldLine Position])
+addValueList = {- Parse and use the source location to insert a value at desired location. -}
+
+removeValueList
+  :: forall (sep :: Type) (b :: Type) (a :: Type)
+   . ( Newtype (List sep b (Located a)) (Located a)
+     , Parsec (List sep b (Located a))
+     , Pretty (List sep b (Located a))
+     )
+  -> (a -> Bool)
+  -> ([FieldLine Position] -> [FieldLine Position])
+removeValueList = {- Parse, if the predicate is met, remove the value from the list. -}
+```
+
+### Example usages
+
+The following examples operate on this cabal build-depends field.
+
+``` cabal
+build-depends:
+  base >             4 && < 5, text > 2.0.4
+  -- interleaved comments
+  , containers > 0.8
+```
+
+Example: modify the bound a dependency within some field lines, can be
+generalized to cabal gen-bounds.
+
+``` haskell
+setBaseVersionTo :: Version -> ([FieldLine Position] -> [FieldLine Position])
+setBaseVersionTo targetVersion = modifyValueList @CommaVSep @Identity @Dependency $ \case
+  (Depedency pname _ libs) | pname == mkPackageName "base" -> Just (Depedency pname targetVersion libs)
+  _ -> Nothing
+```
+
+``` cabal
+build-depends:
+  base > 4.8, text > 2.0.4
+  -- interleaved comments
+  , containers > 0.8
+```
+
+Example: append a new dependency, can be generalized to cabal add.
+
+``` haskell
+addNewDependency :: Dependency -> ([FieldLine Position] -> [FieldLine Position])
+addNewDependency = addValueList @CommaVSep @Identity @Dependency Prepend
+```
+
+``` cabal
+build-depends:
+  foo,
+  base >             4 && < 5, text > 2.0.4
+  -- interleaved comments
+  , containers > 0.8
+```
+
+Example: remove a dependency
+
+``` haskell
+removeDependency
+  :: (Dependency -> Bool)
+  -> ([FieldLine Position] -> [FieldLine Position])
+removeDependency = removeValueList @CommaVSep @Identity @Depedency
+```
+
+``` cabal
+-- Remove `base`
+build-depends:
+  text > 2.0.4
+  -- interleaved comments
+  , containers > 0.8
+```
+
+Example: sort the dependencies. We treat the entire dependency list as
+an atom, and all in-field-lines trivia are lost. In-field-lines trivia
+are also lost because the entire list is rerendered. The comments are
+not moved to the closest item. See open question on comment handling.
+
+``` haskell
+sortDependency
+  :: (Dependency -> Dependency -> Ord)
+  -> ([FieldLine Position] -> [FieldLine Position])
+sortDependency cmp = modifyValueAtomAla @(List CommaVSep @Identity) @Dependency $ \deps ->
+  Just (sortBy cmp deps)
+```
+
+``` cabal
+-- Sort by ascending package name.
+build-depends:
+  base > 4 && < 5,
+  containers > 0.8,
+  -- interleaved comments
+  text > 2.0.4,
+```
 
 Exactprint and the modification framework can be implemented and tested
 independently.
@@ -591,6 +727,41 @@ Foundation.
 
 We are still investigating if describing it is possible or beneficial to
 describe the modification API in terms of lens.
+
+- Whitespaces
+
+  Cabal allow leading spaces to be ` ` (plain whitespace) or `\t` (tab).
+  We would like to know if it is possible to enforce the usage of plain
+  whitespace across all cabal files. There is an existing todo comment
+  to enforce the use of plain whitespace in field indentation in field
+  lexer.
+
+  Trailing whitespaces and lines with only whitespaces are also lost in
+  the current exactprint implementation. To restore them, they need to
+  be saved. This would entail more modification to the lexer and field
+  parser. We want to know if it's feasible to drop them. On a related
+  note, git can be configured to detect trailing whitespaces and warn
+  the user, or automatically remove them.
+
+- Line endings
+
+  On a windows machine, lines are ended with CRLF instead of LF. It
+  shouldn't be hard to detect if a cabal file uses one or the other.
+  However, we want to discuss on what to do regarding mixed line
+  endings.
+
+- Sorting
+
+  It is possible to sort a cabal field using the proposed API. The loss
+  of trivia is local to the field, but it has some problems:
+
+  - Comments will stay where they were originally.
+
+  - In-field-lines trivia will be lost.
+
+  Sorting is more of a formatter feature, which exactprint doesn't try
+  to perfect. We want to know if the current implementation is
+  satisfactory.
 
 ## References
 
