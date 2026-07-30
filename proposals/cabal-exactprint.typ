@@ -741,6 +741,10 @@ It would also benefit existing programs that depend on Cabal:
 This work would also simplify implementation of formatters or modification tools operating on
 other formats using the same envelope format, namely #(references.project-description-documentation.override-name)["project descriptions"].
 
+We have tested this existing implementation with project files within the haskell/cabal repo
+itself, and obtained 55 roundtrip out of 60 files. The failures are mostly due to line-ending
+errors.
+
 == Implementation Notes
 
 #references.jappie-original-twg-proposal.get-link has been accepted and funded by the Haskell Foundation.
@@ -764,6 +768,11 @@ describe the modification API in terms of lens.
   Trailing whitespaces and lines with only whitespaces are also lost in the current exactprint implementation.
   To restore them, they need to be saved. This would entail more modification to the lexer and field parser.
   We want to know if it's feasible to drop them.
+
+  By subsituting tab with spaces in package description throughout hackage before parsing, we
+  made another 3724 files roundtrip. In other words, these files are only failing due to their tabs
+  being converted to spaces. That is 1.9141 percent of hackage.
+
   On a related note, git can be configured to detect trailing whitespaces and warn the user, or
   automatically remove them.
 
