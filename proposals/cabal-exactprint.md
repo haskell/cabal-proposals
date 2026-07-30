@@ -345,16 +345,14 @@ appendDependency =
         -- Focus on a field, create it should it not exist.
         (hasFieldName "build-depends")
         -- Inject a new dependency into the list of dependencies.
-        (addFieldLinesListLike @Dependency myNewDep)
-
--- A helper function that adds a given thing into a list of 'FieldLine Position'.
-addFieldLinesListLike :: forall t. (Parsec t, Pretty t) => t -> ([FieldLine Position] -> [FieldLine Position])
+        -- Defined in previous example using 'addValueList'.
+        (addNewDependency @Dependency myNewDep)
 ```
 
 The set of all the foci of a `Edit` tree describes a set of matching
 paths down the tree of fields. At the leaf (in the above example,
 `AddField`) we help user build a function that modifies
-`[FieldLine Position]` by providing `addFieldLinesListLike`.
+`[FieldLine Position]` by providing `addValueList`.
 
 We strive to make the API flexible and will expose ways to modify
 `[Field Position]` directly. We don't try to guarantee the correctness
@@ -710,6 +708,10 @@ modification tools operating on other formats using the same envelope
 format, namely ["project
 descriptions"](https://cabal.readthedocs.io/en/stable/cabal-project-description-file.html#project-description-cabal-project-file).
 
+We have tested this existing implementation with project files within
+the haskell/cabal repo itself, and obtained 55 roundtrip out of 60
+files. The failures are mostly due to line-ending errors.
+
 ## Implementation Notes
 
 [Jappie's original Haskell Foundation Tech
@@ -739,9 +741,15 @@ describe the modification API in terms of lens.
   Trailing whitespaces and lines with only whitespaces are also lost in
   the current exactprint implementation. To restore them, they need to
   be saved. This would entail more modification to the lexer and field
-  parser. We want to know if it's feasible to drop them. On a related
-  note, git can be configured to detect trailing whitespaces and warn
-  the user, or automatically remove them.
+  parser. We want to know if it's feasible to drop them.
+
+  By subsituting tab with spaces in package description throughout
+  hackage before parsing, we made another 3724 files roundtrip. In other
+  words, these files are only failing due to their tabs being converted
+  to spaces. That is 1.9141 percent of hackage.
+
+  On a related note, git can be configured to detect trailing
+  whitespaces and warn the user, or automatically remove them.
 
 - Line endings
 
