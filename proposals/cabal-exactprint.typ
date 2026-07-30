@@ -395,16 +395,14 @@ appendDependency =
         -- Focus on a field, create it should it not exist.
         (hasFieldName "build-depends")
         -- Inject a new dependency into the list of dependencies.
-        (addFieldLinesListLike @Dependency myNewDep)
-
--- A helper function that adds a given thing into a list of 'FieldLine Position'.
-addFieldLinesListLike :: forall t. (Parsec t, Pretty t) => t -> ([FieldLine Position] -> [FieldLine Position])
+        -- Defined in previous example using 'addValueList'.
+        (addNewDependency @Dependency myNewDep)
 ```
 
 The set of all the foci of a `Edit` tree describes a set of matching
 paths down the tree of fields. At the leaf (in the above example,
 `AddField`) we help user build a function that modifies
-`[FieldLine Position]` by providing `addFieldLinesListLike`.
+`[FieldLine Position]` by providing `addValueList`.
 
 We strive to make the API flexible and will expose ways to modify
 `[Field Position]` directly. We don't try to guarantee the correctness of this
