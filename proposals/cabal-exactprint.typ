@@ -247,7 +247,7 @@ modifyValueAtomAla
      , Pretty b
      )
   => (a -> Maybe a) -- ^ Nothing prevents a new render.
-  -> ([FieldLine Position] -> FieldLine Position))
+  -> ([FieldLine Position] -> [FieldLine Position])
 modifyValueAtomAla = {- Implementation of the algorithm for single value. -}
 
 -- | Build a @[FieldLine Position]@ modification function given a function @a -> Maybe a@, parsed as @List sep b a@.
