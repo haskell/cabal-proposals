@@ -792,5 +792,28 @@ describe the modification API in terms of lens.
   Sorting is more of a formatter feature, which exactprint doesn't try to perfect. We want to know
   if the current implementation is satisfactory.
 
+- Granularity of modification
+
+  We propose functions to insertion/removal/modify list-like field content for any separator that Cabal
+  supports (e.g. `license-files`, `build-depends`, etc), as well as function to modify single
+  element field content (e.g. `cabal-version`).
+
+  Should insertion and removal allow user to insert to arbitrary position into the list?
+  Are simple prepend/append (for the case of insertion) enough ?
+
+- "Prettiness" of list modification
+
+  This is of course subjective, but it can still somewhat be discussed.
+  #link("https://github.com/leana8959/cabal/blob/5c3c0eb445937e52f9b9c87e8d998cec283990f1/Cabal-tests/tests/ParserTests.hs#L168-L363")[
+    The current implementation ] generally follows the idea that the new item should look like it's
+  formatted, without touching existing items before or after.
+  To make the matter simpler (and by consequence more correct) I do not try to prepend a leading
+  comma even if the user had it, for example.
+
+  As an example of subjectively bad formatting, it is possible to append/prepend on the same line as
+  long as the old item is correctly separated from the new one. If one were to chain this operation
+  many times, the string will become very long, albeit being exact.
+
+
 == References
 #list(..references.values().map(x => x.get-link))
