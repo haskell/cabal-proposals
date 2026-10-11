@@ -89,12 +89,12 @@ approach.
 == Summary
 
 The Cabal Exactprint project aims to develop a precise parsing and printing tool for package
-descriptions in the cabal library.
+descriptions in the Cabal-syntax library.
 
-This will allow both cabal and other tools to introduce deltas into package descriptions through a typed API,
+This will allow both `cabal` and other tools to introduce deltas into package descriptions through a typed API,
 simplifying the modification/addition/removal of fields, without mangling the format, structure or comments of users files.
 
-Furthermore it makes cabal authoritative on the package description format, allowing downstream
+Furthermore it makes Cabal-syntax authoritative on the package description format, allowing downstream
 users to use the provided parsing and printing functions and get a stability guarantee.
 
 We define the parse-print idempotency to be `print . parse == id`, which reads "parsing then
@@ -103,10 +103,10 @@ package descriptions, and we do not consider the braces syntax in this work.
 
 == Motivation
 
-Cabal builds packages by following stanzas written in #(references.package-description-documentation.override-name)[package descriptions].
-These files have the extension `.cabal`. Cabal is currently unable to modify such files losslessly.
+`cabal` builds packages by following stanzas written in #(references.package-description-documentation.override-name)[package descriptions].
+These files have the extension `.cabal`. `cabal` is currently unable to modify such files losslessly.
 
-Here are some of the symptoms manifesting in different ways through out the Cabal CLI:
+Here are some of the symptoms manifesting in different ways through out the `cabal` CLI:
 
 - `cabal format`
 
@@ -116,24 +116,24 @@ Here are some of the symptoms manifesting in different ways through out the Caba
 
 - `cabal add`
 
-  Cabal should be able to add a dependency to a component. The Rust language's cabal equivalent,
+  `cabal` should be able to add a dependency to a component. The Rust language's `cabal` equivalent,
   `cargo`, does this just fine.
-  This can't be implemented in Cabal yet because modifying a portion of the package description's in-memory representation
-  mangles the entire package description, similar to `cabal format`.
+  This can't be implemented in `cabal` yet because modifying a portion of the package description's
+  in-memory representation mangles the entire package description, similar to `cabal format`.
 
 - Missing module declaration
 
-  When a module is needed but is not declared in the package description, Cabal can't add it for you.
-  Again, because cabal would mangle the package description if it tries to touch it.
+  When a module is needed but is not declared in the package description, `cabal` can't add it for you.
+  Again, because `cabal` would mangle the package description if it tries to touch it.
   It can only tell you that it's missing. Argh.
 
 - `cabal gen-bounds`
 
-  Cabal is very helpful and can generate dependency constraints ("bounds") for you.
+  `cabal` is very helpful and can generate dependency constraints ("bounds") for you.
   However, it just dumps them in the terminal, because it can't modify the package description.
 
 
-Cabal is also not authoritative in this matter, many projects have been created to do what cabal
+`cabal` is also not authoritative in this matter, many projects have been created to do what `cabal`
 can't:
 
 - #references.cabal-fmt-project.get-link, a formatter.
@@ -146,8 +146,8 @@ can't:
 We propose to leverage the existing `Field ann` data type, as well as
 the `Parsec` and `Pretty` classes and their instances to implement Cabal Exactprint.
 
-As a preliminary task, we modify the cabal lexer and field parser's
-definition to retain comments. Currently Cabal doesn't store any of the
+As a preliminary task, we modify the Cabal-syntax lexer and field parser's
+definition to retain comments. Currently Cabal-syntax doesn't store any of the
 comments. This is already implemented in #references.comment-parser-pr.get-link which is yet to be merged.
 
 Firstly, we implement exactprinting from `[Field ann]`. That is,
@@ -213,7 +213,7 @@ proceed with the following steps:
 + Validate that the new data is parsable and parses to the transformed value.
 
 The above steps would not allow modifying list like values such as `[Dependency]`, especially
-that cabal allows having more than one comma separated item in a list to be on the same line,
+that Cabal-syntax allows having more than one comma separated item in a list to be on the same line,
 there's no bijection between fieldline and the individual item parsed.
 
 To achieve precise and local change to a single item in a list,
@@ -286,7 +286,7 @@ removeValueList = {- Parse, if the predicate is met, remove the value from the l
 
 === Example usages
 
-The following examples operate on this cabal build-depends field.
+The following examples operate on this `build-depends` field.
 
 ```cabal
 build-depends:
@@ -295,7 +295,7 @@ build-depends:
   , containers > 0.8
 ```
 
-Example: modify the bound a dependency within some field lines, can be generalized to cabal gen-bounds.
+Example: modify the bound a dependency within some field lines, can be generalized to `cabal gen-bounds`.
 
 ```haskell
 setBaseVersionTo :: Version -> ([FieldLine Position] -> [FieldLine Position])
@@ -311,7 +311,7 @@ build-depends:
   , containers > 0.8
 ```
 
-Example: append a new dependency, can be generalized to cabal add.
+Example: append a new dependency, can be generalized to `cabal add`.
 ```haskell
 addNewDependency :: Dependency -> ([FieldLine Position] -> [FieldLine Position])
 addNewDependency = addValueList @CommaVSep @Identity @Dependency Append
@@ -375,7 +375,7 @@ We want to let user describe a single modification that we call `Edit`
 by specifying a focus and a transformation. Here we add a new dependency
 `myNewDep` as an example. This modification can be expressed in plain
 English as "within the section library with no arguments #footnote[In
-  cabal, sections can have arguments. If-else conditions are actually
+  package descriptions, sections can have arguments. If-else conditions are actually
   sections where the condition is the single argument, and `library` is a
   section that can take a library name as a section argument.], within
 the field `build-depends`, add (append) `myNewDep`." In pseudo Haskell
@@ -454,8 +454,7 @@ to implement Cabal Exactprint.
   I realized that a big part of the demand was to modify
   `[Field Position]` in a typed way which doesn't necessarily need GPD.
   To allow typed modification in the fields, we extended the `Field`
-  data type to have more constructor (the goal was one per known cabal
-  field).
+  data type to have more constructor (the goal was one per known field).
 
   This attempt proved that modifying or printing `[Field Position]` (or
   something isomorphic to it) is a lot easier. The shape of the field syntax
@@ -600,9 +599,9 @@ this far.
 - Regarding losing the shape of the sections:
 
   In a package description, it is possible to have trivia for each section as
-  well. The library stanza "library" is normalized to lower case in
-  Cabal, but to achieve 100% roundtrip, we need to be able to save the
-  original string (which I call _cased name_). Worse, cabal
+  well. The library stanza "library" is normalized to lower case,
+  but to achieve 100% roundtrip, we need to be able to save the
+  original string (which I call _cased name_). Worse, `cabal`
   doesn't parse a simple component but a component wrapped in a
   conditional tree `CondTree`. `Library` is represented in a suboptimal
   way where non-conditional fields such as library name is nested within
@@ -613,7 +612,7 @@ this far.
 - Regarding losing the shape of a field:
 
   `monoidalField` fields parses things that are monoids and merges them
-  during parsing. This means that the following two cabal fields have
+  during parsing. This means that the following two fields have
   exactly the same meaning.
 
   ```cabal
@@ -685,7 +684,7 @@ allowing typed modification that people were hoping for in the original
 thread.
 
 The idea is to create a `TField ann` (typed field) data type that has a
-constructor for each of the fields that cabal supports. Each of the
+constructor for each of the fields that `cabal` supports. Each of the
 field will bear the value of the parsed type that its corresponding
 field has.
 
@@ -699,8 +698,7 @@ soon closed due to the complexity it bears. It wouldn't be possible to
 use template haskell in Cabal-syntax to generate `GEq` and `GOrdering`
 instances due to it being a GHC boot library. Writing these instances by
 hand will also be tedious due to the size of the pattern match being
-quadratic to the size of the constructor, which is the amount of cabal
-fields we support.
+quadratic to the size of the constructor, which is the amount of fields we support.
 
 == Backwards Compatibility / Migration
 
@@ -711,7 +709,7 @@ The changes are local to the parser, we do not foresee any backwards-compatibili
 == Interested parties
 
 As outlined in #references.exact-printer-mega-issue.get-link,
-this would benefit the functionality of Cabal itself many ways, namely
+this would benefit the functionality of Cabal itself in many ways, namely
 the following:
 
 - New command `cabal add` that adds a dependency automatically by
@@ -730,22 +728,22 @@ It would also benefit existing programs that depend on Cabal:
   sequence. All of the strategies use parsed fields to guide stringy
   manipulation directly within the source file. In comparison
   Cabal Exactprint will allow users to manipulate `[Field ann]`
-  instead. Or, even better, we should be able to implement cabal-add in
+  instead. Or, even better, we should be able to implement `Bodigrim/cabal-add` in
   cabal directly.
 
 - #references.cabal-fmt-project.get-link
 
-  It parses the package description twice: once with `readFields` from cabal, and
+  It parses the package description twice: once with `readFields` of Cabal, and
   again with its own parser to find all the comments. This can be
   simplified the new `readFieldsWithComments` in #references.comment-parser-pr.get-link.
 
 - Eventually #references.hls-project.get-link will be able to generate
-  code actions to modify cabal files.
+  code actions to modify package descriptions.
 
 This work would also simplify implementation of formatters or modification tools operating on
 other formats using the same envelope format, namely #(references.project-description-documentation.override-name)["project descriptions"].
 
-We have tested this existing implementation with project files within the haskell/cabal repo
+We have tested this existing implementation with project files within the `haskell/cabal` repo
 itself, and obtained 55 roundtrip out of 60 files. The failures are mostly due to line-ending
 errors.
 
@@ -765,8 +763,8 @@ describe the modification API in terms of lens.
 
 - Whitespaces
 
-  Cabal allow leading spaces to be ` ` (plain whitespace) or `\t` (tab).
-  We would like to know if it is possible to enforce the usage of plain whitespace across all cabal files.
+  `cabal` allow leading spaces to be ` ` (plain whitespace) or `\t` (tab).
+  We would like to know if it is possible to enforce the usage of plain whitespace across all package descriptions.
   There is an existing todo comment to enforce the use of plain whitespace in field indentation in field lexer.
 
   Trailing whitespaces and lines with only whitespaces are also lost in the current exactprint implementation.
@@ -783,12 +781,12 @@ describe the modification API in terms of lens.
 - Line endings
 
   On a windows machine, lines are ended with CRLF instead of LF. It shouldn't be hard to detect if a
-  cabal file uses one or the other.
+  package description uses one or the other.
   However, we want to discuss on what to do regarding mixed line endings.
 
 - Sorting
 
-  It is possible to sort a cabal field using the proposed API.
+  It is possible to sort a field using the proposed API.
   The loss of trivia is local to the field, but it has some problems:
   - Comments will stay where they were originally.
   - In-field-lines trivia will be lost.
