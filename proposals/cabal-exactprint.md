@@ -863,7 +863,7 @@ describe the modification API in terms of lens.
        
       ```
 
-[^2]: In package descriptions, sections can have arguments. If-else
+[^2]: In package descriptions, sections can have arguments. `if-else`
     conditions are actually sections where the condition is the single
     argument, and `library` is a section that can take a library name as
     a section argument.

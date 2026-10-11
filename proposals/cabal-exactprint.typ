@@ -375,7 +375,7 @@ We want to let user describe a single modification that we call `Edit`
 by specifying a focus and a transformation. Here we add a new dependency
 `myNewDep` as an example. This modification can be expressed in plain
 English as "within the section library with no arguments #footnote[In
-  package descriptions, sections can have arguments. If-else conditions are actually
+  package descriptions, sections can have arguments. `if-else` conditions are actually
   sections where the condition is the single argument, and `library` is a
   section that can take a library name as a section argument.], within
 the field `build-depends`, add (append) `myNewDep`." In pseudo Haskell
