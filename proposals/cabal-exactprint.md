@@ -23,8 +23,8 @@ parsing and printing functions and get a stability guarantee.
 
 We define the parse-print idempotency to be `print . parse == id`, which
 reads "parsing then printing is as if we've done nothing". We only focus
-on ensuring this property to hold for valid package descriptions, and we
-do not consider the braces syntax in this work.
+on ensuring this property to hold for valid package descriptions. Braces
+syntax will be correctly parsed but printed as layout syntax.
 
 ## Motivation
 
